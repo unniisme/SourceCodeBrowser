@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python IDE</title>
+    <!-- Include CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.css">
+    <!-- Include CodeMirror JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js"></script>
+    <!-- Include Python mode for CodeMirror -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/python/python.min.js"></script>
+</head>
+<body>
+    <h1>Python IDE</h1>
+    <form id="codeForm" method="post">
+        <textarea id="code" name="code">{{submitted_code}}</textarea>
+        <br>
+        <button type="submit" value="submit">Submit Code</button>
+    </form>
+    <br>
+    <br>
+    <pre>{{result}}</pre>
+
+
+    <script>
+        // Initialize CodeMirror
+        var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+            mode: "python",
+            lineNumbers: true
+        });
+
+        // Highlight code on change
+        editor.on("change", function() {
+            var code = editor.getValue();
+            // Send code to server for highlighting
+            fetch('/highlight', {
+                method: 'POST',
+                body: 'code=' + encodeURIComponent(code),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('code').innerHTML = data;
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
