@@ -2,10 +2,19 @@ from flask import Flask, render_template, request
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import HtmlFormatter
-from model.model import get_model
+# from model.model import get_model
+from model.T5 import T5Model
+import logging
+import sys
+
+FORMAT = "[%(levelname)-8s][%(asctime)s][%(filename)s:%(lineno)s - %(funcName)13s()] %(message)s"
+logging.basicConfig(format=FORMAT, stream=sys.stdout, encoding='utf-8', level=logging.DEBUG)
 
 app = Flask(__name__)
-model = get_model()
+
+# model = get_model("T5")
+model = T5Model()
+model.model.save_pretrained("pretrained")
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
