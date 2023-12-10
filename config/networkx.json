@@ -1,0 +1,5 @@
+{
+    "SourceCodePath" : "/media/unnii/unnii/Projects/NLP-Project/networkx/networkx",
+    "DataStorePath" : "data/networkx",
+    "ModelStorePath" : "data/networkx/pretrained"
+}

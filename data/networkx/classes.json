@@ -1,0 +1,750 @@
+[
+ {
+  "docstring": "Initialize a graph with edges, name, or graph attributes.\n\nParameters\n----------\nincoming_graph_data : input graph (optional, default: None)\n    Data to initialize graph.  If None (default) an empty\n    graph is created.  The data can be an edge list, or any\n    NetworkX graph object.  If the corresponding optional Python\n    packages are installed the data can also be a 2D NumPy array, a\n    SciPy sparse array, or a PyGraphviz graph.\n\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to graph as key=value pairs.\n\nSee Also\n--------\nconvert\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G = nx.Graph(name=\"my graph\")\n>>> e = [(1, 2), (2, 3), (3, 4)]  # list of edges\n>>> G = nx.Graph(e)\n\nArbitrary graph attribute pairs (key=value) may be assigned\n\n>>> G = nx.Graph(e, day=\"Friday\")\n>>> G.graph\n{'day': 'Friday'}",
+  "code": "def __init__(self, incoming_graph_data=None, **attr):\n    self.graph = self.graph_attr_dict_factory()\n    self._node = self.node_dict_factory()\n    self._adj = self.adjlist_outer_dict_factory()\n    self._pred = self.adjlist_outer_dict_factory()\n    if incoming_graph_data is not None:\n        convert.to_networkx_graph(incoming_graph_data, create_using=self)\n    self.graph.update(attr)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the neighbors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edge-data-dict.  So `G.adj[3][2]['color'] = 'blue'` sets\nthe color of the edge `(3, 2)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, datadict in G.adj[n].items():`.\n\nThe neighbor information is also provided by subscripting the graph.\nSo `for nbr, foovalue in G[node].data('foo', default=1):` works.\n\nFor directed graphs, `G.adj` holds outgoing (successor) info.",
+  "code": "@cached_property\ndef adj(self):\n    return AdjacencyView(self._succ)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the successors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edge-data-dict.  So `G.succ[3][2]['color'] = 'blue'` sets\nthe color of the edge `(3, 2)` to `\"blue\"`.\n\nIterating over G.succ behaves like a dict. Useful idioms include\n`for nbr, datadict in G.succ[n].items():`.  A data-view not provided\nby dicts also exists: `for nbr, foovalue in G.succ[node].data('foo'):`\nand a default can be set via a `default` argument to the `data` method.\n\nThe neighbor information is also provided by subscripting the graph.\nSo `for nbr, foovalue in G[node].data('foo', default=1):` works.\n\nFor directed graphs, `G.adj` is identical to `G.succ`.",
+  "code": "@cached_property\ndef succ(self):\n    return AdjacencyView(self._succ)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the predecessors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edge-data-dict.  So `G.pred[2][3]['color'] = 'blue'` sets\nthe color of the edge `(3, 2)` to `\"blue\"`.\n\nIterating over G.pred behaves like a dict. Useful idioms include\n`for nbr, datadict in G.pred[n].items():`.  A data-view not provided\nby dicts also exists: `for nbr, foovalue in G.pred[node].data('foo'):`\nA default can be set via a `default` argument to the `data` method.",
+  "code": "@cached_property\ndef pred(self):\n    return AdjacencyView(self._pred)"
+ },
+ {
+  "docstring": "Add a single node `node_for_adding` and update node attributes.\n\nParameters\n----------\nnode_for_adding : node\n    A node can be any hashable Python object except None.\nattr : keyword arguments, optional\n    Set or change node attributes using key=value.\n\nSee Also\n--------\nadd_nodes_from\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.add_node(1)\n>>> G.add_node(\"Hello\")\n>>> K3 = nx.Graph([(0, 1), (1, 2), (2, 0)])\n>>> G.add_node(K3)\n>>> G.number_of_nodes()\n3\n\nUse keywords set/change node attributes:\n\n>>> G.add_node(1, size=10)\n>>> G.add_node(3, weight=0.4, UTM=(\"13S\", 382871, 3972649))\n\n",
+  "code": "def add_node(self, node_for_adding, **attr):\n    if node_for_adding not in self._succ:\n        if node_for_adding is None:\n            raise ValueError('None cannot be a node')\n        self._succ[node_for_adding] = self.adjlist_inner_dict_factory()\n        self._pred[node_for_adding] = self.adjlist_inner_dict_factory()\n        attr_dict = self._node[node_for_adding] = self.node_attr_dict_factory()\n        attr_dict.update(attr)\n    else:\n        self._node[node_for_adding].update(attr)"
+ },
+ {
+  "docstring": "Add multiple nodes.\n\nParameters\n----------\nnodes_for_adding : iterable container\n    A container of nodes (list, dict, set, etc.).\n    OR\n    A container of (node, attribute dict) tuples.\n    Node attributes are updated using the attribute dict.\nattr : keyword arguments, optional (default= no attributes)\n    Update attributes for all nodes in nodes.\n    Node attributes specified in nodes as a tuple take\n    precedence over attributes specified via keyword arguments.\n\nSee Also\n--------\nadd_node\n\n",
+  "code": "def add_nodes_from(self, nodes_for_adding, **attr):\n    for n in nodes_for_adding:\n        try:\n            newnode = n not in self._node\n            newdict = attr\n        except TypeError:\n            n, ndict = n\n            newnode = n not in self._node\n            newdict = attr.copy()\n            newdict.update(ndict)\n        if newnode:\n            if n is None:\n                raise ValueError('None cannot be a node')\n            self._succ[n] = self.adjlist_inner_dict_factory()\n            self._pred[n] = self.adjlist_inner_dict_factory()\n            self._node[n] = self.node_attr_dict_factory()\n        self._node[n].update(newdict)"
+ },
+ {
+  "docstring": "Remove node n.\n\nRemoves the node n and all adjacent edges.\nAttempting to remove a nonexistent node will raise an exception.\n\nParameters\n----------\nn : node\n   A node in the graph\n\nRaises\n------\nNetworkXError\n   If n is not in the graph.\n\nSee Also\n--------\nremove_nodes_from\n\nExamples\n--------\n>>> G = nx.path_graph(3)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> list(G.edges)\n[(0, 1), (1, 2)]\n>>> G.remove_node(1)\n>>> list(G.edges)\n[]",
+  "code": "def remove_node(self, n):\n    try:\n        nbrs = self._succ[n]\n        del self._node[n]\n    except KeyError as err:\n        raise NetworkXError(f'The node {n} is not in the digraph.') from err\n    for u in nbrs:\n        del self._pred[u][n]\n    del self._succ[n]\n    for u in self._pred[n]:\n        del self._succ[u][n]\n    del self._pred[n]"
+ },
+ {
+  "docstring": "Remove multiple nodes.\n\nParameters\n----------\nnodes : iterable container\n    A container of nodes (list, dict, set, etc.).  If a node\n    in the container is not in the graph it is silently ignored.\n\nSee Also\n--------\nremove_node\n\n",
+  "code": "def remove_nodes_from(self, nodes):\n    for n in nodes:\n        try:\n            succs = self._succ[n]\n            del self._node[n]\n            for u in succs:\n                del self._pred[u][n]\n            del self._succ[n]\n            for u in self._pred[n]:\n                del self._succ[u][n]\n            del self._pred[n]\n        except KeyError:\n            pass"
+ },
+ {
+  "docstring": "Add an edge between u and v.\n\nThe nodes u and v will be automatically added if they are\nnot already in the graph.\n\nEdge attributes can be specified with keywords or by directly\naccessing the edge's attribute dictionary. See examples below.\n\nParameters\n----------\nu_of_edge, v_of_edge : nodes\n    Nodes can be, for example, strings or numbers.\n    Nodes must be hashable (and not None) Python objects.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nSee Also\n--------\nadd_edges_from : add a collection of edges\n\n",
+  "code": "def add_edge(self, u_of_edge, v_of_edge, **attr):\n    u, v = (u_of_edge, v_of_edge)\n    if u not in self._succ:\n        if u is None:\n            raise ValueError('None cannot be a node')\n        self._succ[u] = self.adjlist_inner_dict_factory()\n        self._pred[u] = self.adjlist_inner_dict_factory()\n        self._node[u] = self.node_attr_dict_factory()\n    if v not in self._succ:\n        if v is None:\n            raise ValueError('None cannot be a node')\n        self._succ[v] = self.adjlist_inner_dict_factory()\n        self._pred[v] = self.adjlist_inner_dict_factory()\n        self._node[v] = self.node_attr_dict_factory()\n    datadict = self._adj[u].get(v, self.edge_attr_dict_factory())\n    datadict.update(attr)\n    self._succ[u][v] = datadict\n    self._pred[v][u] = datadict"
+ },
+ {
+  "docstring": "Add all the edges in ebunch_to_add.\n\nParameters\n----------\nebunch_to_add : container of edges\n    Each edge given in the container will be added to the\n    graph. The edges must be given as 2-tuples (u, v) or\n    3-tuples (u, v, d) where d is a dictionary containing edge data.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nSee Also\n--------\nadd_edge : add a single edge\nadd_weighted_edges_from : convenient way to add weighted edges\n\n",
+  "code": "def add_edges_from(self, ebunch_to_add, **attr):\n    for e in ebunch_to_add:\n        ne = len(e)\n        if ne == 3:\n            u, v, dd = e\n        elif ne == 2:\n            u, v = e\n            dd = {}\n        else:\n            raise NetworkXError(f'Edge tuple {e} must be a 2-tuple or 3-tuple.')\n        if u not in self._succ:\n            if u is None:\n                raise ValueError('None cannot be a node')\n            self._succ[u] = self.adjlist_inner_dict_factory()\n            self._pred[u] = self.adjlist_inner_dict_factory()\n            self._node[u] = self.node_attr_dict_factory()\n        if v not in self._succ:\n            if v is None:\n                raise ValueError('None cannot be a node')\n            self._succ[v] = self.adjlist_inner_dict_factory()\n            self._pred[v] = self.adjlist_inner_dict_factory()\n            self._node[v] = self.node_attr_dict_factory()\n        datadict = self._adj[u].get(v, self.edge_attr_dict_factory())\n        datadict.update(attr)\n        datadict.update(dd)\n        self._succ[u][v] = datadict\n        self._pred[v][u] = datadict"
+ },
+ {
+  "docstring": "Remove the edge between u and v.\n\nParameters\n----------\nu, v : nodes\n    Remove the edge between nodes u and v.\n\nRaises\n------\nNetworkXError\n    If there is not an edge between u and v.\n\nSee Also\n--------\nremove_edges_from : remove a collection of edges\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, etc\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.remove_edge(0, 1)\n>>> e = (1, 2)\n>>> G.remove_edge(*e)  # unpacks e from an edge tuple\n>>> e = (2, 3, {\"weight\": 7})  # an edge with attribute data\n>>> G.remove_edge(*e[:2])  # select first part of edge tuple",
+  "code": "def remove_edge(self, u, v):\n    try:\n        del self._succ[u][v]\n        del self._pred[v][u]\n    except KeyError as err:\n        raise NetworkXError(f'The edge {u}-{v} not in graph.') from err"
+ },
+ {
+  "docstring": "Remove all edges specified in ebunch.\n\nParameters\n----------\nebunch: list or container of edge tuples\n    Each edge given in the list or container will be removed\n    from the graph. The edges can be:\n\n        - 2-tuples (u, v) edge between u and v.\n        - 3-tuples (u, v, k) where k is ignored.\n\nSee Also\n--------\nremove_edge : remove a single edge\n\n",
+  "code": "def remove_edges_from(self, ebunch):\n    for e in ebunch:\n        u, v = e[:2]\n        if u in self._succ and v in self._succ[u]:\n            del self._succ[u][v]\n            del self._pred[v][u]"
+ },
+ {
+  "docstring": "Returns True if node u has successor v.\n\nThis is true if graph has the edge u->v.",
+  "code": "def has_successor(self, u, v):\n    return u in self._succ and v in self._succ[u]"
+ },
+ {
+  "docstring": "Returns True if node u has predecessor v.\n\nThis is true if graph has the edge u<-v.",
+  "code": "def has_predecessor(self, u, v):\n    return u in self._pred and v in self._pred[u]"
+ },
+ {
+  "docstring": "Returns an iterator over successor nodes of n.\n\nA successor of n is a node m such that there exists a directed\nedge from n to m.\n\nParameters\n----------\nn : node\n   A node in the graph\n\nRaises\n------\nNetworkXError\n   If n is not in the graph.\n\nSee Also\n--------\npredecessors\n\n",
+  "code": "def successors(self, n):\n    try:\n        return iter(self._succ[n])\n    except KeyError as err:\n        raise NetworkXError(f'The node {n} is not in the digraph.') from err"
+ },
+ {
+  "docstring": "Returns an iterator over predecessor nodes of n.\n\nA predecessor of n is a node m such that there exists a directed\nedge from m to n.\n\nParameters\n----------\nn : node\n   A node in the graph\n\nRaises\n------\nNetworkXError\n   If n is not in the graph.\n\nSee Also\n--------\nsuccessors",
+  "code": "def predecessors(self, n):\n    try:\n        return iter(self._pred[n])\n    except KeyError as err:\n        raise NetworkXError(f'The node {n} is not in the digraph.') from err"
+ },
+ {
+  "docstring": "An OutEdgeView of the DiGraph as G.edges or G.edges().\n\nedges(self, nbunch=None, data=False, default=None)\n\nThe OutEdgeView provides set-like operations on the edge-tuples\nas well as edge attribute lookup. When called, it also provides\nan EdgeDataView object which allows control of access to edge\nattributes (but does not provide set-like operations).\nHence, `G.edges[u, v]['color']` provides the value of the color\nattribute for edge `(u, v)` while\n`for (u, v, c) in G.edges.data('color', default='red'):`\niterates through all the edges yielding the color attribute\nwith default `'red'` if no color attribute exists.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges from these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nedges : OutEdgeView\n    A view of edge attributes, usually it iterates over (u, v)\n    or (u, v, d) tuples of edges, but can also be used for\n    attribute lookup as `edges[u, v]['foo']`.\n\nSee Also\n--------\nin_edges, out_edges\n\n",
+  "code": "@cached_property\ndef edges(self):\n    return OutEdgeView(self)"
+ },
+ {
+  "docstring": "A view of the in edges of the graph as G.in_edges or G.in_edges().\n\nin_edges(self, nbunch=None, data=False, default=None):\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nin_edges : InEdgeView or InEdgeDataView\n    A view of edge attributes, usually it iterates over (u, v)\n    or (u, v, d) tuples of edges, but can also be used for\n    attribute lookup as `edges[u, v]['foo']`.\n\nExamples\n--------\n>>> G = nx.DiGraph()\n>>> G.add_edge(1, 2, color='blue')\n>>> G.in_edges()\nInEdgeView([(1, 2)])\n>>> G.in_edges(nbunch=2)\nInEdgeDataView([(1, 2)])\n\nSee Also\n--------\nedges",
+  "code": "@cached_property\ndef in_edges(self):\n    return InEdgeView(self)"
+ },
+ {
+  "docstring": "A DegreeView for the Graph as G.degree or G.degree().\n\nThe node degree is the number of edges adjacent to the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator for (node, degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nDiDegreeView or int\n    If multiple nodes are requested (the default), returns a `DiDegreeView`\n    mapping nodes to their degree.\n    If a single node is requested, returns the degree of the node as an integer.\n\nSee Also\n--------\nin_degree, out_degree\n\nExamples\n--------\n>>> G = nx.DiGraph()  # or MultiDiGraph\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.degree(0)  # node 0 with degree 1\n1\n>>> list(G.degree([0, 1, 2]))\n[(0, 1), (1, 2), (2, 2)]",
+  "code": "@cached_property\ndef degree(self):\n    return DiDegreeView(self)"
+ },
+ {
+  "docstring": "An InDegreeView for (node, in_degree) or in_degree for single node.\n\nThe node in_degree is the number of edges pointing to the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iteration over (node, in_degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nIf a single node is requested\ndeg : int\n    In-degree of the node\n\nOR if multiple nodes are requested\nnd_iter : iterator\n    The iterator returns two-tuples of (node, in-degree).\n\nSee Also\n--------\ndegree, out_degree\n\nExamples\n--------\n>>> G = nx.DiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.in_degree(0)  # node 0 with degree 0\n0\n>>> list(G.in_degree([0, 1, 2]))\n[(0, 0), (1, 1), (2, 1)]",
+  "code": "@cached_property\ndef in_degree(self):\n    return InDegreeView(self)"
+ },
+ {
+  "docstring": "An OutDegreeView for (node, out_degree)\n\nThe node out_degree is the number of edges pointing out of the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator over (node, out_degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nIf a single node is requested\ndeg : int\n    Out-degree of the node\n\nOR if multiple nodes are requested\nnd_iter : iterator\n    The iterator returns two-tuples of (node, out-degree).\n\nSee Also\n--------\ndegree, in_degree\n\nExamples\n--------\n>>> G = nx.DiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.out_degree(0)  # node 0 with degree 1\n1\n>>> list(G.out_degree([0, 1, 2]))\n[(0, 1), (1, 1), (2, 1)]",
+  "code": "@cached_property\ndef out_degree(self):\n    return OutDegreeView(self)"
+ },
+ {
+  "docstring": "Remove all nodes and edges from the graph.\n\nThis also removes the name, and all graph, node, and edge attributes.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.clear()\n>>> list(G.nodes)\n[]\n>>> list(G.edges)\n[]",
+  "code": "def clear(self):\n    self._succ.clear()\n    self._pred.clear()\n    self._node.clear()\n    self.graph.clear()"
+ },
+ {
+  "docstring": "Remove all edges from the graph without altering nodes.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.clear_edges()\n>>> list(G.nodes)\n[0, 1, 2, 3]\n>>> list(G.edges)\n[]",
+  "code": "def clear_edges(self):\n    for predecessor_dict in self._pred.values():\n        predecessor_dict.clear()\n    for successor_dict in self._succ.values():\n        successor_dict.clear()"
+ },
+ {
+  "docstring": "Returns True if graph is a multigraph, False otherwise.",
+  "code": "def is_multigraph(self):\n    return False"
+ },
+ {
+  "docstring": "Returns True if graph is directed, False otherwise.",
+  "code": "def is_directed(self):\n    return True"
+ },
+ {
+  "docstring": "Returns an undirected representation of the digraph.\n\nParameters\n----------\nreciprocal : bool (optional)\n  If True only keep edges that appear in both directions\n  in the original digraph.\nas_view : bool (optional, default=False)\n  If True return an undirected view of the original directed graph.\n\nReturns\n-------\nG : Graph\n    An undirected graph with the same name and nodes and\n    with edge (u, v, data) if either (u, v, data) or (v, u, data)\n    is in the digraph.  If both edges exist in digraph and\n    their edge data is different, only one edge is created\n    with an arbitrary choice of which edge data to use.\n    You must check and correct for this manually if desired.\n\nSee Also\n--------\nGraph, copy, add_edge, add_edges_from\n\n",
+  "code": "def to_undirected(self, reciprocal=False, as_view=False):\n    graph_class = self.to_undirected_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    if reciprocal is True:\n        G.add_edges_from(((u, v, deepcopy(d)) for u, nbrs in self._adj.items() for v, d in nbrs.items() if v in self._pred[u]))\n    else:\n        G.add_edges_from(((u, v, deepcopy(d)) for u, nbrs in self._adj.items() for v, d in nbrs.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns the reverse of the graph.\n\nThe reverse is a graph with the same nodes and edges\nbut with the directions of the edges reversed.\n\nParameters\n----------\ncopy : bool optional (default=True)\n    If True, return a new DiGraph holding the reversed edges.\n    If False, the reverse graph is created using a view of\n    the original graph.",
+  "code": "def reverse(self, copy=True):\n    if copy:\n        H = self.__class__()\n        H.graph.update(deepcopy(self.graph))\n        H.add_nodes_from(((n, deepcopy(d)) for n, d in self.nodes.items()))\n        H.add_edges_from(((v, u, deepcopy(d)) for u, v, d in self.edges(data=True)))\n        return H\n    return nx.reverse_view(self)"
+ },
+ {
+  "docstring": "Returns a filter function that always evaluates to True.",
+  "code": "def no_filter(*items):\n    return True"
+ },
+ {
+  "docstring": "Returns a filter function that hides specific nodes.",
+  "code": "def hide_nodes(nodes):\n    nodes = set(nodes)\n    return lambda node: node not in nodes"
+ },
+ {
+  "docstring": "Returns a filter function that hides specific directed edges.",
+  "code": "def hide_diedges(edges):\n    edges = {(u, v) for u, v in edges}\n    return lambda u, v: (u, v) not in edges"
+ },
+ {
+  "docstring": "Returns a filter function that hides specific undirected edges.",
+  "code": "def hide_edges(edges):\n    alledges = set(edges) | {(v, u) for u, v in edges}\n    return lambda u, v: (u, v) not in alledges"
+ },
+ {
+  "docstring": "Returns a filter function that hides specific multi-directed edges.",
+  "code": "def hide_multidiedges(edges):\n    edges = {(u, v, k) for u, v, k in edges}\n    return lambda u, v, k: (u, v, k) not in edges"
+ },
+ {
+  "docstring": "Returns a filter function that hides specific multi-undirected edges.",
+  "code": "def hide_multiedges(edges):\n    alledges = set(edges) | {(v, u, k) for u, v, k in edges}\n    return lambda u, v, k: (u, v, k) not in alledges"
+ },
+ {
+  "docstring": "Returns a filter function that shows specific directed edges.",
+  "code": "def show_diedges(edges):\n    edges = {(u, v) for u, v in edges}\n    return lambda u, v: (u, v) in edges"
+ },
+ {
+  "docstring": "Returns a filter function that shows specific undirected edges.",
+  "code": "def show_edges(edges):\n    alledges = set(edges) | {(v, u) for u, v in edges}\n    return lambda u, v: (u, v) in alledges"
+ },
+ {
+  "docstring": "Returns a filter function that shows specific multi-directed edges.",
+  "code": "def show_multidiedges(edges):\n    edges = {(u, v, k) for u, v, k in edges}\n    return lambda u, v, k: (u, v, k) in edges"
+ },
+ {
+  "docstring": "Returns a filter function that shows specific multi-undirected edges.",
+  "code": "def show_multiedges(edges):\n    alledges = set(edges) | {(v, u, k) for u, v, k in edges}\n    return lambda u, v, k: (u, v, k) in alledges"
+ },
+ {
+  "docstring": "Returns a NodeView over the graph nodes.\n\nThis function wraps the :func:`G.nodes <networkx.Graph.nodes>` property.",
+  "code": "def nodes(G):\n    return G.nodes()"
+ },
+ {
+  "docstring": "Returns an edge view of edges incident to nodes in nbunch.\n\nReturn all edges if nbunch is unspecified or nbunch=None.\n\nFor digraphs, edges=out_edges\n\nThis function wraps the :func:`G.edges <networkx.Graph.edges>` property.",
+  "code": "def edges(G, nbunch=None):\n    return G.edges(nbunch)"
+ },
+ {
+  "docstring": "Returns a degree view of single node or of nbunch of nodes.\nIf nbunch is omitted, then return degrees of *all* nodes.\n\nThis function wraps the :func:`G.degree <networkx.Graph.degree>` property.",
+  "code": "def degree(G, nbunch=None, weight=None):\n    return G.degree(nbunch, weight)"
+ },
+ {
+  "docstring": "Returns an iterator over all neighbors of node n.\n\nThis function wraps the :func:``G.neighbors <networkx.Graph.neighbors>` function.",
+  "code": "def neighbors(G, n):\n    return G.neighbors(n)"
+ },
+ {
+  "docstring": "Returns the number of nodes in the graph.\n\nThis function wraps the :func:`G.number_of_nodes <networkx.Graph.number_of_nodes>` function.",
+  "code": "def number_of_nodes(G):\n    return G.number_of_nodes()"
+ },
+ {
+  "docstring": "Returns the number of edges in the graph.\n\nThis function wraps the :func:`G.number_of_edges <networkx.Graph.number_of_edges>` function.",
+  "code": "def number_of_edges(G):\n    return G.number_of_edges()"
+ },
+ {
+  "docstring": "Returns the density of a graph.\n\nThe density for undirected graphs is\n\n.. math::\n\n   d = \\frac{2m}{n(n-1)},\n\nand for directed graphs is\n\n.. math::\n\n   d = \\frac{m}{n(n-1)},\n\nwhere `n` is the number of nodes and `m`  is the number of edges in `G`.\n\n",
+  "code": "def density(G):\n    n = number_of_nodes(G)\n    m = number_of_edges(G)\n    if m == 0 or n <= 1:\n        return 0\n    d = m / (n * (n - 1))\n    if not G.is_directed():\n        d *= 2\n    return d"
+ },
+ {
+  "docstring": "Returns a list of the frequency of each degree value.\n\nParameters\n----------\nG : Networkx graph\n   A graph\n\nReturns\n-------\nhist : list\n   A list of frequencies of degrees.\n   The degree values are the index in the list.\n\n",
+  "code": "def degree_histogram(G):\n    counts = Counter((d for n, d in G.degree()))\n    return [counts.get(i, 0) for i in range(max(counts) + 1)]"
+ },
+ {
+  "docstring": "Return True if graph is directed.",
+  "code": "def is_directed(G):\n    return G.is_directed()"
+ },
+ {
+  "docstring": "Dummy method for raising errors when trying to modify frozen graphs",
+  "code": "def frozen(*args, **kwargs):\n    raise nx.NetworkXError(\"Frozen graph can't be modified\")"
+ },
+ {
+  "docstring": "Modify graph to prevent further change by adding or removing\nnodes or edges.\n\nNode and edge data can still be modified.\n\nParameters\n----------\nG : graph\n  A NetworkX graph\n\nExamples\n--------\n>>> G = nx.path_graph(4)\n>>> G = nx.freeze(G)\n>>> try:\n...     G.add_edge(4, 5)\n... except nx.NetworkXError as err:\n...     print(str(err))\nFrozen graph can't be modified\n\n",
+  "code": "def freeze(G):\n    G.add_node = frozen\n    G.add_nodes_from = frozen\n    G.remove_node = frozen\n    G.remove_nodes_from = frozen\n    G.add_edge = frozen\n    G.add_edges_from = frozen\n    G.add_weighted_edges_from = frozen\n    G.remove_edge = frozen\n    G.remove_edges_from = frozen\n    G.clear = frozen\n    G.clear_edges = frozen\n    G.frozen = True\n    return G"
+ },
+ {
+  "docstring": "Returns True if graph is frozen.\n\nParameters\n----------\nG : graph\n  A NetworkX graph\n\nSee Also\n--------\nfreeze",
+  "code": "def is_frozen(G):\n    try:\n        return G.frozen\n    except AttributeError:\n        return False"
+ },
+ {
+  "docstring": "Add a star to Graph G_to_add_to.\n\nThe first node in `nodes_for_star` is the middle of the star.\nIt is connected to all other nodes.\n\nParameters\n----------\nG_to_add_to : graph\n    A NetworkX graph\nnodes_for_star : iterable container\n    A container of nodes.\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to every edge in star.\n\nSee Also\n--------\nadd_path, add_cycle\n\nExamples\n--------\n>>> G = nx.Graph()\n>>> nx.add_star(G, [0, 1, 2, 3])\n>>> nx.add_star(G, [10, 11, 12], weight=2)",
+  "code": "def add_star(G_to_add_to, nodes_for_star, **attr):\n    nlist = iter(nodes_for_star)\n    try:\n        v = next(nlist)\n    except StopIteration:\n        return\n    G_to_add_to.add_node(v)\n    edges = ((v, n) for n in nlist)\n    G_to_add_to.add_edges_from(edges, **attr)"
+ },
+ {
+  "docstring": "Add a path to the Graph G_to_add_to.\n\nParameters\n----------\nG_to_add_to : graph\n    A NetworkX graph\nnodes_for_path : iterable container\n    A container of nodes.  A path will be constructed from\n    the nodes (in order) and added to the graph.\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to every edge in path.\n\nSee Also\n--------\nadd_star, add_cycle\n\nExamples\n--------\n>>> G = nx.Graph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> nx.add_path(G, [10, 11, 12], weight=7)",
+  "code": "def add_path(G_to_add_to, nodes_for_path, **attr):\n    nlist = iter(nodes_for_path)\n    try:\n        first_node = next(nlist)\n    except StopIteration:\n        return\n    G_to_add_to.add_node(first_node)\n    G_to_add_to.add_edges_from(pairwise(chain((first_node,), nlist)), **attr)"
+ },
+ {
+  "docstring": "Add a cycle to the Graph G_to_add_to.\n\nParameters\n----------\nG_to_add_to : graph\n    A NetworkX graph\nnodes_for_cycle: iterable container\n    A container of nodes.  A cycle will be constructed from\n    the nodes (in order) and added to the graph.\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to every edge in cycle.\n\nSee Also\n--------\nadd_path, add_star\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> nx.add_cycle(G, [0, 1, 2, 3])\n>>> nx.add_cycle(G, [10, 11, 12], weight=7)",
+  "code": "def add_cycle(G_to_add_to, nodes_for_cycle, **attr):\n    nlist = iter(nodes_for_cycle)\n    try:\n        first_node = next(nlist)\n    except StopIteration:\n        return\n    G_to_add_to.add_node(first_node)\n    G_to_add_to.add_edges_from(pairwise(chain((first_node,), nlist), cyclic=True), **attr)"
+ },
+ {
+  "docstring": "Returns the subgraph induced on nodes in nbunch.\n\nParameters\n----------\nG : graph\n   A NetworkX graph\n\nnbunch : list, iterable\n   A container of nodes that will be iterated through once (thus\n   it should be an iterator or be iterable).  Each element of the\n   container should be a valid node type: any hashable type except\n   None.  If nbunch is None, return all edges data in the graph.\n   Nodes in nbunch that are not in the graph will be (quietly)\n   ignored.\n\n",
+  "code": "def subgraph(G, nbunch):\n    return G.subgraph(nbunch)"
+ },
+ {
+  "docstring": "Returns a SubGraph view of `G` showing only nodes in nbunch.\n\nThe induced subgraph of a graph on a set of nodes N is the\ngraph with nodes N and edges from G which have both ends in N.\n\nParameters\n----------\nG : NetworkX Graph\nnbunch : node, container of nodes or None (for all nodes)\n\nReturns\n-------\nsubgraph : SubGraph View\n    A read-only view of the subgraph in `G` induced by the nodes.\n    Changes to the graph `G` will be reflected in the view.\n\n",
+  "code": "def induced_subgraph(G, nbunch):\n    induced_nodes = nx.filters.show_nodes(G.nbunch_iter(nbunch))\n    return nx.subgraph_view(G, filter_node=induced_nodes)"
+ },
+ {
+  "docstring": "Returns a view of the subgraph induced by the specified edges.\n\nThe induced subgraph contains each edge in `edges` and each\nnode incident to any of those edges.\n\nParameters\n----------\nG : NetworkX Graph\nedges : iterable\n    An iterable of edges. Edges not present in `G` are ignored.\n\nReturns\n-------\nsubgraph : SubGraph View\n    A read-only edge-induced subgraph of `G`.\n    Changes to `G` are reflected in the view.\n\n",
+  "code": "def edge_subgraph(G, edges):\n    nxf = nx.filters\n    edges = set(edges)\n    nodes = set()\n    for e in edges:\n        nodes.update(e[:2])\n    induced_nodes = nxf.show_nodes(nodes)\n    if G.is_multigraph():\n        if G.is_directed():\n            induced_edges = nxf.show_multidiedges(edges)\n        else:\n            induced_edges = nxf.show_multiedges(edges)\n    elif G.is_directed():\n        induced_edges = nxf.show_diedges(edges)\n    else:\n        induced_edges = nxf.show_edges(edges)\n    return nx.subgraph_view(G, filter_node=induced_nodes, filter_edge=induced_edges)"
+ },
+ {
+  "docstring": "Returns a view of `G` with hidden nodes and edges.\n\nThe resulting subgraph filters out node `nodes` and edges `edges`.\nFiltered out nodes also filter out any of their edges.\n\nParameters\n----------\nG : NetworkX Graph\nnodes : iterable\n    An iterable of nodes. Nodes not present in `G` are ignored.\nedges : iterable\n    An iterable of edges. Edges not present in `G` are ignored.\n\nReturns\n-------\nsubgraph : SubGraph View\n    A read-only restricted view of `G` filtering out nodes and edges.\n    Changes to `G` are reflected in the view.\n\n",
+  "code": "def restricted_view(G, nodes, edges):\n    nxf = nx.filters\n    hide_nodes = nxf.hide_nodes(nodes)\n    if G.is_multigraph():\n        if G.is_directed():\n            hide_edges = nxf.hide_multidiedges(edges)\n        else:\n            hide_edges = nxf.hide_multiedges(edges)\n    elif G.is_directed():\n        hide_edges = nxf.hide_diedges(edges)\n    else:\n        hide_edges = nxf.hide_edges(edges)\n    return nx.subgraph_view(G, filter_node=hide_nodes, filter_edge=hide_edges)"
+ },
+ {
+  "docstring": "Returns a directed view of the graph `graph`.\n\nIdentical to graph.to_directed(as_view=True)\nNote that graph.to_directed defaults to `as_view=False`\nwhile this function always provides a view.",
+  "code": "def to_directed(graph):\n    return graph.to_directed(as_view=True)"
+ },
+ {
+  "docstring": "Returns an undirected view of the graph `graph`.\n\nIdentical to graph.to_undirected(as_view=True)\nNote that graph.to_undirected defaults to `as_view=False`\nwhile this function always provides a view.",
+  "code": "def to_undirected(graph):\n    return graph.to_undirected(as_view=True)"
+ },
+ {
+  "docstring": "Returns a copy of the graph G with all of the edges removed.\n\nParameters\n----------\nG : graph\n   A NetworkX graph\n\nwith_data :  bool (default=True)\n   Propagate Graph and Nodes data to the new graph.\n\nSee Also\n--------\nempty_graph",
+  "code": "def create_empty_copy(G, with_data=True):\n    H = G.__class__()\n    H.add_nodes_from(G.nodes(data=with_data))\n    if with_data:\n        H.graph.update(G.graph)\n    return H"
+ },
+ {
+  "docstring": "Sets node attributes from a given value or dictionary of values.\n\n.. Warning:: The call order of arguments `values` and `name`\n    switched between v1.x & v2.x.\n\nParameters\n----------\nG : NetworkX Graph\n\nvalues : scalar value, dict-like\n    What the node attribute should be set to.  If `values` is\n    not a dictionary, then it is treated as a single attribute value\n    that is then applied to every node in `G`.  This means that if\n    you provide a mutable object, like a list, updates to that object\n    will be reflected in the node attribute for every node.\n    The attribute name will be `name`.\n\n    If `values` is a dict or a dict of dict, it should be keyed\n    by node to either an attribute value or a dict of attribute key/value\n    pairs used to update the node's attributes.\n\nname : string (optional, default=None)\n    Name of the node attribute to set if values is a scalar.\n\nExamples\n--------\nAfter computing some property of the nodes of a graph, you may want\nto assign a node attribute to store the value of that property for\neach node::\n\n    >>> G = nx.path_graph(3)\n    >>> bb = nx.betweenness_centrality(G)\n    >>> isinstance(bb, dict)\n    True\n    >>> nx.set_node_attributes(G, bb, \"betweenness\")\n    >>> G.nodes[1][\"betweenness\"]\n    1.0\n\nIf you provide a list as the second argument, updates to the list\nwill be reflected in the node attribute for each node::\n\n    >>> G = nx.path_graph(3)\n    >>> labels = []\n    >>> nx.set_node_attributes(G, labels, \"labels\")\n    >>> labels.append(\"foo\")\n    >>> G.nodes[0][\"labels\"]\n    ['foo']\n    >>> G.nodes[1][\"labels\"]\n    ['foo']\n    >>> G.nodes[2][\"labels\"]\n    ['foo']\n\nIf you provide a dictionary of dictionaries as the second argument,\nthe outer dictionary is assumed to be keyed by node to an inner\ndictionary of node attributes for that node::\n\n    >>> G = nx.path_graph(3)\n    >>> attrs = {0: {\"attr1\": 20, \"attr2\": \"nothing\"}, 1: {\"attr2\": 3}}\n    >>> nx.set_node_attributes(G, attrs)\n    >>> G.nodes[0][\"attr1\"]\n    20\n    >>> G.nodes[0][\"attr2\"]\n    'nothing'\n    >>> G.nodes[1][\"attr2\"]\n    3\n    >>> G.nodes[2]\n    {}\n\nNote that if the dictionary contains nodes that are not in `G`, the\nvalues are silently ignored::\n\n    >>> G = nx.Graph()\n    >>> G.add_node(0)\n    >>> nx.set_node_attributes(G, {0: \"red\", 1: \"blue\"}, name=\"color\")\n    >>> G.nodes[0][\"color\"]\n    'red'\n    >>> 1 in G.nodes\n    False",
+  "code": "def set_node_attributes(G, values, name=None):\n    if name is not None:\n        try:\n            for n, v in values.items():\n                try:\n                    G.nodes[n][name] = values[n]\n                except KeyError:\n                    pass\n        except AttributeError:\n            for n in G:\n                G.nodes[n][name] = values\n    else:\n        for n, d in values.items():\n            try:\n                G.nodes[n].update(d)\n            except KeyError:\n                pass"
+ },
+ {
+  "docstring": "Get node attributes from graph\n\nParameters\n----------\nG : NetworkX Graph\n\nname : string\n   Attribute name\n\ndefault: object (default=None)\n   Default value of the node attribute if there is no value set for that\n   node in graph. If `None` then nodes without this attribute are not\n   included in the returned dict.\n\nReturns\n-------\nDictionary of attributes keyed by node.\n\nExamples\n--------\n>>> G = nx.Graph()\n>>> G.add_nodes_from([1, 2, 3], color=\"red\")\n>>> color = nx.get_node_attributes(G, \"color\")\n>>> color[1]\n'red'\n>>> G.add_node(4)\n>>> color = nx.get_node_attributes(G, \"color\", default=\"yellow\")\n>>> color[4]\n'yellow'",
+  "code": "def get_node_attributes(G, name, default=None):\n    if default is not None:\n        return {n: d.get(name, default) for n, d in G.nodes.items()}\n    return {n: d[name] for n, d in G.nodes.items() if name in d}"
+ },
+ {
+  "docstring": "Sets edge attributes from a given value or dictionary of values.\n\n.. Warning:: The call order of arguments `values` and `name`\n    switched between v1.x & v2.x.\n\nParameters\n----------\nG : NetworkX Graph\n\nvalues : scalar value, dict-like\n    What the edge attribute should be set to.  If `values` is\n    not a dictionary, then it is treated as a single attribute value\n    that is then applied to every edge in `G`.  This means that if\n    you provide a mutable object, like a list, updates to that object\n    will be reflected in the edge attribute for each edge.  The attribute\n    name will be `name`.\n\n    If `values` is a dict or a dict of dict, it should be keyed\n    by edge tuple to either an attribute value or a dict of attribute\n    key/value pairs used to update the edge's attributes.\n    For multigraphs, the edge tuples must be of the form ``(u, v, key)``,\n    where `u` and `v` are nodes and `key` is the edge key.\n    For non-multigraphs, the keys must be tuples of the form ``(u, v)``.\n\nname : string (optional, default=None)\n    Name of the edge attribute to set if values is a scalar.\n\nExamples\n--------\nAfter computing some property of the edges of a graph, you may want\nto assign a edge attribute to store the value of that property for\neach edge::\n\n    >>> G = nx.path_graph(3)\n    >>> bb = nx.edge_betweenness_centrality(G, normalized=False)\n    >>> nx.set_edge_attributes(G, bb, \"betweenness\")\n    >>> G.edges[1, 2][\"betweenness\"]\n    2.0\n\nIf you provide a list as the second argument, updates to the list\nwill be reflected in the edge attribute for each edge::\n\n    >>> labels = []\n    >>> nx.set_edge_attributes(G, labels, \"labels\")\n    >>> labels.append(\"foo\")\n    >>> G.edges[0, 1][\"labels\"]\n    ['foo']\n    >>> G.edges[1, 2][\"labels\"]\n    ['foo']\n\nIf you provide a dictionary of dictionaries as the second argument,\nthe entire dictionary will be used to update edge attributes::\n\n    >>> G = nx.path_graph(3)\n    >>> attrs = {(0, 1): {\"attr1\": 20, \"attr2\": \"nothing\"}, (1, 2): {\"attr2\": 3}}\n    >>> nx.set_edge_attributes(G, attrs)\n    >>> G[0][1][\"attr1\"]\n    20\n    >>> G[0][1][\"attr2\"]\n    'nothing'\n    >>> G[1][2][\"attr2\"]\n    3\n\nThe attributes of one Graph can be used to set those of another.\n\n    >>> H = nx.path_graph(3)\n    >>> nx.set_edge_attributes(H, G.edges)\n\nNote that if the dict contains edges that are not in `G`, they are\nsilently ignored::\n\n    >>> G = nx.Graph([(0, 1)])\n    >>> nx.set_edge_attributes(G, {(1, 2): {\"weight\": 2.0}})\n    >>> (1, 2) in G.edges()\n    False\n\nFor multigraphs, the `values` dict is expected to be keyed by 3-tuples\nincluding the edge key::\n\n    >>> MG = nx.MultiGraph()\n    >>> edges = [(0, 1), (0, 1)]\n    >>> MG.add_edges_from(edges)  # Returns list of edge keys\n    [0, 1]\n    >>> attributes = {(0, 1, 0): {\"cost\": 21}, (0, 1, 1): {\"cost\": 7}}\n    >>> nx.set_edge_attributes(MG, attributes)\n    >>> MG[0][1][0][\"cost\"]\n    21\n    >>> MG[0][1][1][\"cost\"]\n    7\n\nIf MultiGraph attributes are desired for a Graph, you must convert the 3-tuple\nmultiedge to a 2-tuple edge and the last multiedge's attribute value will\noverwrite the previous values. Continuing from the previous case we get::\n\n    >>> H = nx.path_graph([0, 1, 2])\n    >>> nx.set_edge_attributes(H, {(u, v): ed for u, v, ed in MG.edges.data()})\n    >>> nx.get_edge_attributes(H, \"cost\")\n    {(0, 1): 7}",
+  "code": "def set_edge_attributes(G, values, name=None):\n    if name is not None:\n        try:\n            if G.is_multigraph():\n                for (u, v, key), value in values.items():\n                    try:\n                        G[u][v][key][name] = value\n                    except KeyError:\n                        pass\n            else:\n                for (u, v), value in values.items():\n                    try:\n                        G[u][v][name] = value\n                    except KeyError:\n                        pass\n        except AttributeError:\n            for u, v, data in G.edges(data=True):\n                data[name] = values\n    elif G.is_multigraph():\n        for (u, v, key), d in values.items():\n            try:\n                G[u][v][key].update(d)\n            except KeyError:\n                pass\n    else:\n        for (u, v), d in values.items():\n            try:\n                G[u][v].update(d)\n            except KeyError:\n                pass"
+ },
+ {
+  "docstring": "Get edge attributes from graph\n\nParameters\n----------\nG : NetworkX Graph\n\nname : string\n   Attribute name\n\ndefault: object (default=None)\n   Default value of the edge attribute if there is no value set for that\n   edge in graph. If `None` then edges without this attribute are not\n   included in the returned dict.\n\nReturns\n-------\nDictionary of attributes keyed by edge. For (di)graphs, the keys are\n2-tuples of the form: (u, v). For multi(di)graphs, the keys are 3-tuples of\nthe form: (u, v, key).\n\nExamples\n--------\n>>> G = nx.Graph()\n>>> nx.add_path(G, [1, 2, 3], color=\"red\")\n>>> color = nx.get_edge_attributes(G, \"color\")\n>>> color[(1, 2)]\n'red'\n>>> G.add_edge(3, 4)\n>>> color = nx.get_edge_attributes(G, \"color\", default=\"yellow\")\n>>> color[(3, 4)]\n'yellow'",
+  "code": "def get_edge_attributes(G, name, default=None):\n    if G.is_multigraph():\n        edges = G.edges(keys=True, data=True)\n    else:\n        edges = G.edges(data=True)\n    if default is not None:\n        return {x[:-1]: x[-1].get(name, default) for x in edges}\n    return {x[:-1]: x[-1][name] for x in edges if name in x[-1]}"
+ },
+ {
+  "docstring": "Returns all of the neighbors of a node in the graph.\n\nIf the graph is directed returns predecessors as well as successors.\n\nParameters\n----------\ngraph : NetworkX graph\n    Graph to find neighbors.\n\nnode : node\n    The node whose neighbors will be returned.\n\nReturns\n-------\nneighbors : iterator\n    Iterator of neighbors",
+  "code": "def all_neighbors(graph, node):\n    if graph.is_directed():\n        values = chain(graph.predecessors(node), graph.successors(node))\n    else:\n        values = graph.neighbors(node)\n    return values"
+ },
+ {
+  "docstring": "Returns the non-neighbors of the node in the graph.\n\nParameters\n----------\ngraph : NetworkX graph\n    Graph to find neighbors.\n\nnode : node\n    The node whose neighbors will be returned.\n\nReturns\n-------\nnon_neighbors : iterator\n    Iterator of nodes in the graph that are not neighbors of the node.",
+  "code": "def non_neighbors(graph, node):\n    nbors = set(neighbors(graph, node)) | {node}\n    return (nnode for nnode in graph if nnode not in nbors)"
+ },
+ {
+  "docstring": "Returns the nonexistent edges in the graph.\n\nParameters\n----------\ngraph : NetworkX graph.\n    Graph to find nonexistent edges.\n\nReturns\n-------\nnon_edges : iterator\n    Iterator of edges that are not in the graph.",
+  "code": "def non_edges(graph):\n    if graph.is_directed():\n        for u in graph:\n            for v in non_neighbors(graph, u):\n                yield (u, v)\n    else:\n        nodes = set(graph)\n        while nodes:\n            u = nodes.pop()\n            for v in nodes - set(graph[u]):\n                yield (u, v)"
+ },
+ {
+  "docstring": "Returns the common neighbors of two nodes in a graph.\n\nParameters\n----------\nG : graph\n    A NetworkX undirected graph.\n\nu, v : nodes\n    Nodes in the graph.\n\nReturns\n-------\ncnbors : iterator\n    Iterator of common neighbors of u and v in the graph.\n\nRaises\n------\nNetworkXError\n    If u or v is not a node in the graph.\n\nExamples\n--------\n>>> G = nx.complete_graph(5)\n>>> sorted(nx.common_neighbors(G, 0, 1))\n[2, 3, 4]",
+  "code": "@not_implemented_for('directed')\ndef common_neighbors(G, u, v):\n    if u not in G:\n        raise nx.NetworkXError('u is not in the graph.')\n    if v not in G:\n        raise nx.NetworkXError('v is not in the graph.')\n    return (w for w in G[u] if w in G[v] and w not in (u, v))"
+ },
+ {
+  "docstring": "Returns True if `G` has weighted edges.\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\n\nedge : tuple, optional\n    A 2-tuple specifying the only edge in `G` that will be tested. If\n    None, then every edge in `G` is tested.\n\nweight: string, optional\n    The attribute name used to query for edge weights.\n\nReturns\n-------\nbool\n    A boolean signifying if `G`, or the specified edge, is weighted.\n\nRaises\n------\nNetworkXError\n    If the specified edge does not exist.\n\nExamples\n--------\n>>> G = nx.path_graph(4)\n>>> nx.is_weighted(G)\nFalse\n>>> nx.is_weighted(G, (2, 3))\nFalse\n\n>>> G = nx.DiGraph()\n>>> G.add_edge(1, 2, weight=1)\n>>> nx.is_weighted(G)\nTrue",
+  "code": "def is_weighted(G, edge=None, weight='weight'):\n    if edge is not None:\n        data = G.get_edge_data(*edge)\n        if data is None:\n            msg = f'Edge {edge!r} does not exist.'\n            raise nx.NetworkXError(msg)\n        return weight in data\n    if is_empty(G):\n        return False\n    return all((weight in data for u, v, data in G.edges(data=True)))"
+ },
+ {
+  "docstring": "Returns True if `G` has negatively weighted edges.\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\n\nedge : tuple, optional\n    A 2-tuple specifying the only edge in `G` that will be tested. If\n    None, then every edge in `G` is tested.\n\nweight: string, optional\n    The attribute name used to query for edge weights.\n\nReturns\n-------\nbool\n    A boolean signifying if `G`, or the specified edge, is negatively\n    weighted.\n\nRaises\n------\nNetworkXError\n    If the specified edge does not exist.\n\nExamples\n--------\n>>> G = nx.Graph()\n>>> G.add_edges_from([(1, 3), (2, 4), (2, 6)])\n>>> G.add_edge(1, 2, weight=4)\n>>> nx.is_negatively_weighted(G, (1, 2))\nFalse\n>>> G[2][4][\"weight\"] = -2\n>>> nx.is_negatively_weighted(G)\nTrue\n>>> G = nx.DiGraph()\n>>> edges = [(\"0\", \"3\", 3), (\"0\", \"1\", -5), (\"1\", \"0\", -2)]\n>>> G.add_weighted_edges_from(edges)\n>>> nx.is_negatively_weighted(G)\nTrue",
+  "code": "def is_negatively_weighted(G, edge=None, weight='weight'):\n    if edge is not None:\n        data = G.get_edge_data(*edge)\n        if data is None:\n            msg = f'Edge {edge!r} does not exist.'\n            raise nx.NetworkXError(msg)\n        return weight in data and data[weight] < 0\n    return any((weight in data and data[weight] < 0 for u, v, data in G.edges(data=True)))"
+ },
+ {
+  "docstring": "Returns True if `G` has no edges.\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\n\nReturns\n-------\nbool\n    True if `G` has no edges, and False otherwise.\n\n",
+  "code": "def is_empty(G):\n    return not any(G.adj.values())"
+ },
+ {
+  "docstring": "Returns an iterator over nodes with self loops.\n\nA node with a self loop has an edge with both ends adjacent\nto that node.\n\nReturns\n-------\nnodelist : iterator\n    A iterator over nodes with self loops.\n\nSee Also\n--------\nselfloop_edges, number_of_selfloops\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.add_edge(1, 1)\n>>> G.add_edge(1, 2)\n>>> list(nx.nodes_with_selfloops(G))\n[1]",
+  "code": "def nodes_with_selfloops(G):\n    return (n for n, nbrs in G.adj.items() if n in nbrs)"
+ },
+ {
+  "docstring": "Returns an iterator over selfloop edges.\n\nA selfloop edge has the same node at both ends.\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\ndata : string or bool, optional (default=False)\n    Return selfloop edges as two tuples (u, v) (data=False)\n    or three-tuples (u, v, datadict) (data=True)\n    or three-tuples (u, v, datavalue) (data='attrname')\nkeys : bool, optional (default=False)\n    If True, return edge keys with each edge.\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nedgeiter : iterator over edge tuples\n    An iterator over all selfloop edges.\n\nSee Also\n--------\nnodes_with_selfloops, number_of_selfloops\n\nExamples\n--------\n>>> G = nx.MultiGraph()  # or Graph, DiGraph, MultiDiGraph, etc\n>>> ekey = G.add_edge(1, 1)\n>>> ekey = G.add_edge(1, 2)\n>>> list(nx.selfloop_edges(G))\n[(1, 1)]\n>>> list(nx.selfloop_edges(G, data=True))\n[(1, 1, {})]\n>>> list(nx.selfloop_edges(G, keys=True))\n[(1, 1, 0)]\n>>> list(nx.selfloop_edges(G, keys=True, data=True))\n[(1, 1, 0, {})]",
+  "code": "def selfloop_edges(G, data=False, keys=False, default=None):\n    if data is True:\n        if G.is_multigraph():\n            if keys is True:\n                return ((n, n, k, d) for n, nbrs in G.adj.items() if n in nbrs for k, d in nbrs[n].items())\n            else:\n                return ((n, n, d) for n, nbrs in G.adj.items() if n in nbrs for d in nbrs[n].values())\n        else:\n            return ((n, n, nbrs[n]) for n, nbrs in G.adj.items() if n in nbrs)\n    elif data is not False:\n        if G.is_multigraph():\n            if keys is True:\n                return ((n, n, k, d.get(data, default)) for n, nbrs in G.adj.items() if n in nbrs for k, d in nbrs[n].items())\n            else:\n                return ((n, n, d.get(data, default)) for n, nbrs in G.adj.items() if n in nbrs for d in nbrs[n].values())\n        else:\n            return ((n, n, nbrs[n].get(data, default)) for n, nbrs in G.adj.items() if n in nbrs)\n    elif G.is_multigraph():\n        if keys is True:\n            return ((n, n, k) for n, nbrs in G.adj.items() if n in nbrs for k in nbrs[n])\n        else:\n            return ((n, n) for n, nbrs in G.adj.items() if n in nbrs for i in range(len(nbrs[n])))\n    else:\n        return ((n, n) for n, nbrs in G.adj.items() if n in nbrs)"
+ },
+ {
+  "docstring": "Returns the number of selfloop edges.\n\nA selfloop edge has the same node at both ends.\n\nReturns\n-------\nnloops : int\n    The number of selfloops.\n\nSee Also\n--------\nnodes_with_selfloops, selfloop_edges\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.add_edge(1, 1)\n>>> G.add_edge(1, 2)\n>>> nx.number_of_selfloops(G)\n1",
+  "code": "def number_of_selfloops(G):\n    return sum((1 for _ in nx.selfloop_edges(G)))"
+ },
+ {
+  "docstring": "Returns whether or not the specified path exists.\n\nFor it to return True, every node on the path must exist and\neach consecutive pair must be connected via one or more edges.\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\n\npath : list\n    A list of nodes which defines the path to traverse\n\nReturns\n-------\nbool\n    True if `path` is a valid path in `G`",
+  "code": "def is_path(G, path):\n    return all((node in G and nbr in G[node] for node, nbr in nx.utils.pairwise(path)))"
+ },
+ {
+  "docstring": "Returns total cost associated with specified path and weight\n\nParameters\n----------\nG : graph\n    A NetworkX graph.\n\npath: list\n    A list of node labels which defines the path to traverse\n\nweight: string\n    A string indicating which edge attribute to use for path cost\n\nReturns\n-------\ncost: int or float\n    An integer or a float representing the total cost with respect to the\n    specified weight of the specified path\n\nRaises\n------\nNetworkXNoPath\n    If the specified edge does not exist.",
+  "code": "def path_weight(G, path, weight):\n    multigraph = G.is_multigraph()\n    cost = 0\n    if not nx.is_path(G, path):\n        raise nx.NetworkXNoPath('path does not exist')\n    for node, nbr in nx.utils.pairwise(path):\n        if multigraph:\n            cost += min((v[weight] for v in G[node][nbr].values()))\n        else:\n            cost += G[node][nbr][weight]\n    return cost"
+ },
+ {
+  "docstring": "Returns the class to use for empty directed copies.\n\nIf you subclass the base classes, use this to designate\nwhat directed class to use for `to_directed()` copies.",
+  "code": "def to_directed_class(self):\n    return nx.DiGraph"
+ },
+ {
+  "docstring": "Returns the class to use for empty undirected copies.\n\nIf you subclass the base classes, use this to designate\nwhat directed class to use for `to_directed()` copies.",
+  "code": "def to_undirected_class(self):\n    return Graph"
+ },
+ {
+  "docstring": "Initialize a graph with edges, name, or graph attributes.\n\nParameters\n----------\nincoming_graph_data : input graph (optional, default: None)\n    Data to initialize graph. If None (default) an empty\n    graph is created.  The data can be an edge list, or any\n    NetworkX graph object.  If the corresponding optional Python\n    packages are installed the data can also be a 2D NumPy array, a\n    SciPy sparse array, or a PyGraphviz graph.\n\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to graph as key=value pairs.\n\nSee Also\n--------\nconvert\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G = nx.Graph(name=\"my graph\")\n>>> e = [(1, 2), (2, 3), (3, 4)]  # list of edges\n>>> G = nx.Graph(e)\n\nArbitrary graph attribute pairs (key=value) may be assigned\n\n>>> G = nx.Graph(e, day=\"Friday\")\n>>> G.graph\n{'day': 'Friday'}",
+  "code": "def __init__(self, incoming_graph_data=None, **attr):\n    self.graph = self.graph_attr_dict_factory()\n    self._node = self.node_dict_factory()\n    self._adj = self.adjlist_outer_dict_factory()\n    if incoming_graph_data is not None:\n        convert.to_networkx_graph(incoming_graph_data, create_using=self)\n    self.graph.update(attr)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the neighbors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edge-data-dict.  So `G.adj[3][2]['color'] = 'blue'` sets\nthe color of the edge `(3, 2)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, datadict in G.adj[n].items():`.\n\nThe neighbor information is also provided by subscripting the graph.\nSo `for nbr, foovalue in G[node].data('foo', default=1):` works.\n\nFor directed graphs, `G.adj` holds outgoing (successor) info.",
+  "code": "@cached_property\ndef adj(self):\n    return AdjacencyView(self._adj)"
+ },
+ {
+  "docstring": "String identifier of the graph.\n\nThis graph attribute appears in the attribute dict G.graph\nkeyed by the string `\"name\"`. as well as an attribute (technically\na property) `G.name`. This is entirely user controlled.",
+  "code": "@property\ndef name(self):\n    return self.graph.get('name', '')"
+ },
+ {
+  "docstring": "Returns a short summary of the graph.\n\nReturns\n-------\ninfo : string\n    Graph information including the graph name (if any), graph type, and the\n    number of nodes and edges.\n\nExamples\n--------\n>>> G = nx.Graph(name=\"foo\")\n>>> str(G)\n\"Graph named 'foo' with 0 nodes and 0 edges\"\n\n>>> G = nx.path_graph(3)\n>>> str(G)\n'Graph with 3 nodes and 2 edges'",
+  "code": "def __str__(self):\n    return ''.join([type(self).__name__, f' named {self.name!r}' if self.name else '', f' with {self.number_of_nodes()} nodes and {self.number_of_edges()} edges'])"
+ },
+ {
+  "docstring": "Iterate over the nodes. Use: 'for n in G'.\n\nReturns\n-------\nniter : iterator\n    An iterator over all nodes in the graph.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> [n for n in G]\n[0, 1, 2, 3]\n>>> list(G)\n[0, 1, 2, 3]",
+  "code": "def __iter__(self):\n    return iter(self._node)"
+ },
+ {
+  "docstring": "Returns True if n is a node, False otherwise. Use: 'n in G'.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> 1 in G\nTrue",
+  "code": "def __contains__(self, n):\n    try:\n        return n in self._node\n    except TypeError:\n        return False"
+ },
+ {
+  "docstring": "Returns the number of nodes in the graph. Use: 'len(G)'.\n\nReturns\n-------\nnnodes : int\n    The number of nodes in the graph.\n\nSee Also\n--------\nnumber_of_nodes: identical method\norder: identical method\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> len(G)\n4",
+  "code": "def __len__(self):\n    return len(self._node)"
+ },
+ {
+  "docstring": "Returns a dict of neighbors of node n.  Use: 'G[n]'.\n\nParameters\n----------\nn : node\n   A node in the graph.\n\nReturns\n-------\nadj_dict : dictionary\n   The adjacency dictionary for nodes connected to n.\n\n",
+  "code": "def __getitem__(self, n):\n    return self.adj[n]"
+ },
+ {
+  "docstring": "Add a single node `node_for_adding` and update node attributes.\n\nParameters\n----------\nnode_for_adding : node\n    A node can be any hashable Python object except None.\nattr : keyword arguments, optional\n    Set or change node attributes using key=value.\n\nSee Also\n--------\nadd_nodes_from\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.add_node(1)\n>>> G.add_node(\"Hello\")\n>>> K3 = nx.Graph([(0, 1), (1, 2), (2, 0)])\n>>> G.add_node(K3)\n>>> G.number_of_nodes()\n3\n\nUse keywords set/change node attributes:\n\n>>> G.add_node(1, size=10)\n>>> G.add_node(3, weight=0.4, UTM=(\"13S\", 382871, 3972649))\n\n",
+  "code": "def add_node(self, node_for_adding, **attr):\n    if node_for_adding not in self._node:\n        if node_for_adding is None:\n            raise ValueError('None cannot be a node')\n        self._adj[node_for_adding] = self.adjlist_inner_dict_factory()\n        attr_dict = self._node[node_for_adding] = self.node_attr_dict_factory()\n        attr_dict.update(attr)\n    else:\n        self._node[node_for_adding].update(attr)"
+ },
+ {
+  "docstring": "Add multiple nodes.\n\nParameters\n----------\nnodes_for_adding : iterable container\n    A container of nodes (list, dict, set, etc.).\n    OR\n    A container of (node, attribute dict) tuples.\n    Node attributes are updated using the attribute dict.\nattr : keyword arguments, optional (default= no attributes)\n    Update attributes for all nodes in nodes.\n    Node attributes specified in nodes as a tuple take\n    precedence over attributes specified via keyword arguments.\n\nSee Also\n--------\nadd_node\n\n",
+  "code": "def add_nodes_from(self, nodes_for_adding, **attr):\n    for n in nodes_for_adding:\n        try:\n            newnode = n not in self._node\n            newdict = attr\n        except TypeError:\n            n, ndict = n\n            newnode = n not in self._node\n            newdict = attr.copy()\n            newdict.update(ndict)\n        if newnode:\n            if n is None:\n                raise ValueError('None cannot be a node')\n            self._adj[n] = self.adjlist_inner_dict_factory()\n            self._node[n] = self.node_attr_dict_factory()\n        self._node[n].update(newdict)"
+ },
+ {
+  "docstring": "Remove node n.\n\nRemoves the node n and all adjacent edges.\nAttempting to remove a nonexistent node will raise an exception.\n\nParameters\n----------\nn : node\n   A node in the graph\n\nRaises\n------\nNetworkXError\n   If n is not in the graph.\n\nSee Also\n--------\nremove_nodes_from\n\nExamples\n--------\n>>> G = nx.path_graph(3)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> list(G.edges)\n[(0, 1), (1, 2)]\n>>> G.remove_node(1)\n>>> list(G.edges)\n[]",
+  "code": "def remove_node(self, n):\n    adj = self._adj\n    try:\n        nbrs = list(adj[n])\n        del self._node[n]\n    except KeyError as err:\n        raise NetworkXError(f'The node {n} is not in the graph.') from err\n    for u in nbrs:\n        del adj[u][n]\n    del adj[n]"
+ },
+ {
+  "docstring": "Remove multiple nodes.\n\nParameters\n----------\nnodes : iterable container\n    A container of nodes (list, dict, set, etc.).  If a node\n    in the container is not in the graph it is silently\n    ignored.\n\nSee Also\n--------\nremove_node\n\n",
+  "code": "def remove_nodes_from(self, nodes):\n    adj = self._adj\n    for n in nodes:\n        try:\n            del self._node[n]\n            for u in list(adj[n]):\n                del adj[u][n]\n            del adj[n]\n        except KeyError:\n            pass"
+ },
+ {
+  "docstring": "A NodeView of the Graph as G.nodes or G.nodes().\n\nCan be used as `G.nodes` for data lookup and for set-like operations.\nCan also be used as `G.nodes(data='color', default=None)` to return a\nNodeDataView which reports specific node data but no set operations.\nIt presents a dict-like interface as well with `G.nodes.items()`\niterating over `(node, nodedata)` 2-tuples and `G.nodes[3]['foo']`\nproviding the value of the `foo` attribute for node `3`. In addition,\na view `G.nodes.data('foo')` provides a dict-like interface to the\n`foo` attribute of each node. `G.nodes.data('foo', default=1)`\nprovides a default for nodes that do not have attribute `foo`.\n\nParameters\n----------\ndata : string or bool, optional (default=False)\n    The node attribute returned in 2-tuple (n, ddict[data]).\n    If True, return entire node attribute dict as (n, ddict).\n    If False, return just the nodes n.\n\ndefault : value, optional (default=None)\n    Value used for nodes that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nNodeView\n    Allows set-like operations over the nodes as well as node\n    attribute dict lookup and calling to get a NodeDataView.\n    A NodeDataView iterates over `(n, data)` and has no set operations.\n    A NodeView iterates over `n` and includes set operations.\n\n    When called, if data is False, an iterator over nodes.\n    Otherwise an iterator of 2-tuples (node, attribute value)\n    where the attribute is specified in `data`.\n    If data is True then the attribute becomes the\n    entire data dictionary.\n\n",
+  "code": "@cached_property\ndef nodes(self):\n    return NodeView(self)"
+ },
+ {
+  "docstring": "Returns the number of nodes in the graph.\n\nReturns\n-------\nnnodes : int\n    The number of nodes in the graph.\n\nSee Also\n--------\norder: identical method\n__len__: identical method\n\nExamples\n--------\n>>> G = nx.path_graph(3)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.number_of_nodes()\n3",
+  "code": "def number_of_nodes(self):\n    return len(self._node)"
+ },
+ {
+  "docstring": "Returns the number of nodes in the graph.\n\nReturns\n-------\nnnodes : int\n    The number of nodes in the graph.\n\nSee Also\n--------\nnumber_of_nodes: identical method\n__len__: identical method\n\nExamples\n--------\n>>> G = nx.path_graph(3)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.order()\n3",
+  "code": "def order(self):\n    return len(self._node)"
+ },
+ {
+  "docstring": "Returns True if the graph contains the node n.\n\nIdentical to `n in G`\n\nParameters\n----------\nn : node\n\nExamples\n--------\n>>> G = nx.path_graph(3)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.has_node(0)\nTrue\n\nIt is more readable and simpler to use\n\n>>> 0 in G\nTrue",
+  "code": "def has_node(self, n):\n    try:\n        return n in self._node\n    except TypeError:\n        return False"
+ },
+ {
+  "docstring": "Add an edge between u and v.\n\nThe nodes u and v will be automatically added if they are\nnot already in the graph.\n\nEdge attributes can be specified with keywords or by directly\naccessing the edge's attribute dictionary. See examples below.\n\nParameters\n----------\nu_of_edge, v_of_edge : nodes\n    Nodes can be, for example, strings or numbers.\n    Nodes must be hashable (and not None) Python objects.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nSee Also\n--------\nadd_edges_from : add a collection of edges\n\n",
+  "code": "def add_edge(self, u_of_edge, v_of_edge, **attr):\n    u, v = (u_of_edge, v_of_edge)\n    if u not in self._node:\n        if u is None:\n            raise ValueError('None cannot be a node')\n        self._adj[u] = self.adjlist_inner_dict_factory()\n        self._node[u] = self.node_attr_dict_factory()\n    if v not in self._node:\n        if v is None:\n            raise ValueError('None cannot be a node')\n        self._adj[v] = self.adjlist_inner_dict_factory()\n        self._node[v] = self.node_attr_dict_factory()\n    datadict = self._adj[u].get(v, self.edge_attr_dict_factory())\n    datadict.update(attr)\n    self._adj[u][v] = datadict\n    self._adj[v][u] = datadict"
+ },
+ {
+  "docstring": "Add all the edges in ebunch_to_add.\n\nParameters\n----------\nebunch_to_add : container of edges\n    Each edge given in the container will be added to the\n    graph. The edges must be given as 2-tuples (u, v) or\n    3-tuples (u, v, d) where d is a dictionary containing edge data.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nSee Also\n--------\nadd_edge : add a single edge\nadd_weighted_edges_from : convenient way to add weighted edges\n\n",
+  "code": "def add_edges_from(self, ebunch_to_add, **attr):\n    for e in ebunch_to_add:\n        ne = len(e)\n        if ne == 3:\n            u, v, dd = e\n        elif ne == 2:\n            u, v = e\n            dd = {}\n        else:\n            raise NetworkXError(f'Edge tuple {e} must be a 2-tuple or 3-tuple.')\n        if u not in self._node:\n            if u is None:\n                raise ValueError('None cannot be a node')\n            self._adj[u] = self.adjlist_inner_dict_factory()\n            self._node[u] = self.node_attr_dict_factory()\n        if v not in self._node:\n            if v is None:\n                raise ValueError('None cannot be a node')\n            self._adj[v] = self.adjlist_inner_dict_factory()\n            self._node[v] = self.node_attr_dict_factory()\n        datadict = self._adj[u].get(v, self.edge_attr_dict_factory())\n        datadict.update(attr)\n        datadict.update(dd)\n        self._adj[u][v] = datadict\n        self._adj[v][u] = datadict"
+ },
+ {
+  "docstring": "Add weighted edges in `ebunch_to_add` with specified weight attr\n\nParameters\n----------\nebunch_to_add : container of edges\n    Each edge given in the list or container will be added\n    to the graph. The edges must be given as 3-tuples (u, v, w)\n    where w is a number.\nweight : string, optional (default= 'weight')\n    The attribute name for the edge weights to be added.\nattr : keyword arguments, optional (default= no attributes)\n    Edge attributes to add/update for all edges.\n\nSee Also\n--------\nadd_edge : add a single edge\nadd_edges_from : add multiple edges\n\n",
+  "code": "def add_weighted_edges_from(self, ebunch_to_add, weight='weight', **attr):\n    self.add_edges_from(((u, v, {weight: d}) for u, v, d in ebunch_to_add), **attr)"
+ },
+ {
+  "docstring": "Remove the edge between u and v.\n\nParameters\n----------\nu, v : nodes\n    Remove the edge between nodes u and v.\n\nRaises\n------\nNetworkXError\n    If there is not an edge between u and v.\n\nSee Also\n--------\nremove_edges_from : remove a collection of edges\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, etc\n>>> G.remove_edge(0, 1)\n>>> e = (1, 2)\n>>> G.remove_edge(*e)  # unpacks e from an edge tuple\n>>> e = (2, 3, {\"weight\": 7})  # an edge with attribute data\n>>> G.remove_edge(*e[:2])  # select first part of edge tuple",
+  "code": "def remove_edge(self, u, v):\n    try:\n        del self._adj[u][v]\n        if u != v:\n            del self._adj[v][u]\n    except KeyError as err:\n        raise NetworkXError(f'The edge {u}-{v} is not in the graph') from err"
+ },
+ {
+  "docstring": "Remove all edges specified in ebunch.\n\nParameters\n----------\nebunch: list or container of edge tuples\n    Each edge given in the list or container will be removed\n    from the graph. The edges can be:\n\n        - 2-tuples (u, v) edge between u and v.\n        - 3-tuples (u, v, k) where k is ignored.\n\nSee Also\n--------\nremove_edge : remove a single edge\n\n",
+  "code": "def remove_edges_from(self, ebunch):\n    adj = self._adj\n    for e in ebunch:\n        u, v = e[:2]\n        if u in adj and v in adj[u]:\n            del adj[u][v]\n            if u != v:\n                del adj[v][u]"
+ },
+ {
+  "docstring": "Update the graph using nodes/edges/graphs as input.\n\nLike dict.update, this method takes a graph as input, adding the\ngraph's nodes and edges to this graph. It can also take two inputs:\nedges and nodes. Finally it can take either edges or nodes.\nTo specify only nodes the keyword `nodes` must be used.\n\nThe collections of edges and nodes are treated similarly to\nthe add_edges_from/add_nodes_from methods. When iterated, they\nshould yield 2-tuples (u, v) or 3-tuples (u, v, datadict).\n\nParameters\n----------\nedges : Graph object, collection of edges, or None\n    The first parameter can be a graph or some edges. If it has\n    attributes `nodes` and `edges`, then it is taken to be a\n    Graph-like object and those attributes are used as collections\n    of nodes and edges to be added to the graph.\n    If the first parameter does not have those attributes, it is\n    treated as a collection of edges and added to the graph.\n    If the first argument is None, no edges are added.\nnodes : collection of nodes, or None\n    The second parameter is treated as a collection of nodes\n    to be added to the graph unless it is None.\n    If `edges is None` and `nodes is None` an exception is raised.\n    If the first parameter is a Graph, then `nodes` is ignored.\n\nExamples\n--------\n>>> G = nx.path_graph(5)\n>>> G.update(nx.complete_graph(range(4, 10)))\n>>> from itertools import combinations\n>>> edges = (\n...     (u, v, {\"power\": u * v})\n...     for u, v in combinations(range(10, 20), 2)\n...     if u * v < 225\n... )\n>>> nodes = [1000]  # for singleton, use a container\n>>> G.update(edges, nodes)\n\n",
+  "code": "def update(self, edges=None, nodes=None):\n    if edges is not None:\n        if nodes is not None:\n            self.add_nodes_from(nodes)\n            self.add_edges_from(edges)\n        else:\n            try:\n                graph_nodes = edges.nodes\n                graph_edges = edges.edges\n            except AttributeError:\n                self.add_edges_from(edges)\n            else:\n                self.add_nodes_from(graph_nodes.data())\n                self.add_edges_from(graph_edges.data())\n                self.graph.update(edges.graph)\n    elif nodes is not None:\n        self.add_nodes_from(nodes)\n    else:\n        raise NetworkXError('update needs nodes or edges input')"
+ },
+ {
+  "docstring": "Returns True if the edge (u, v) is in the graph.\n\nThis is the same as `v in G[u]` without KeyError exceptions.\n\nParameters\n----------\nu, v : nodes\n    Nodes can be, for example, strings or numbers.\n    Nodes must be hashable (and not None) Python objects.\n\nReturns\n-------\nedge_ind : bool\n    True if edge is in the graph, False otherwise.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.has_edge(0, 1)  # using two nodes\nTrue\n>>> e = (0, 1)\n>>> G.has_edge(*e)  #  e is a 2-tuple (u, v)\nTrue\n>>> e = (0, 1, {\"weight\": 7})\n>>> G.has_edge(*e[:2])  # e is a 3-tuple (u, v, data_dictionary)\nTrue\n\nThe following syntax are equivalent:\n\n>>> G.has_edge(0, 1)\nTrue\n>>> 1 in G[0]  # though this gives KeyError if 0 not in G\nTrue",
+  "code": "def has_edge(self, u, v):\n    try:\n        return v in self._adj[u]\n    except KeyError:\n        return False"
+ },
+ {
+  "docstring": "Returns an iterator over all neighbors of node n.\n\nThis is identical to `iter(G[n])`\n\nParameters\n----------\nn : node\n   A node in the graph\n\nReturns\n-------\nneighbors : iterator\n    An iterator over all neighbors of node n\n\nRaises\n------\nNetworkXError\n    If the node n is not in the graph.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> [n for n in G.neighbors(0)]\n[1]\n\n",
+  "code": "def neighbors(self, n):\n    try:\n        return iter(self._adj[n])\n    except KeyError as err:\n        raise NetworkXError(f'The node {n} is not in the graph.') from err"
+ },
+ {
+  "docstring": "An EdgeView of the Graph as G.edges or G.edges().\n\nedges(self, nbunch=None, data=False, default=None)\n\nThe EdgeView provides set-like operations on the edge-tuples\nas well as edge attribute lookup. When called, it also provides\nan EdgeDataView object which allows control of access to edge\nattributes (but does not provide set-like operations).\nHence, `G.edges[u, v]['color']` provides the value of the color\nattribute for edge `(u, v)` while\n`for (u, v, c) in G.edges.data('color', default='red'):`\niterates through all the edges yielding the color attribute\nwith default `'red'` if no color attribute exists.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges from these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nedges : EdgeView\n    A view of edge attributes, usually it iterates over (u, v)\n    or (u, v, d) tuples of edges, but can also be used for\n    attribute lookup as `edges[u, v]['foo']`.\n\n",
+  "code": "@cached_property\ndef edges(self):\n    return EdgeView(self)"
+ },
+ {
+  "docstring": "Returns the attribute dictionary associated with edge (u, v).\n\nThis is identical to `G[u][v]` except the default is returned\ninstead of an exception if the edge doesn't exist.\n\nParameters\n----------\nu, v : nodes\ndefault:  any Python object (default=None)\n    Value to return if the edge (u, v) is not found.\n\nReturns\n-------\nedge_dict : dictionary\n    The edge attribute dictionary.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G[0][1]\n{}\n\nWarning: Assigning to `G[u][v]` is not permitted.\nBut it is safe to assign attributes `G[u][v]['foo']`\n\n>>> G[0][1][\"weight\"] = 7\n>>> G[0][1][\"weight\"]\n7\n>>> G[1][0][\"weight\"]\n7\n\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.get_edge_data(0, 1)  # default edge data is {}\n{}\n>>> e = (0, 1)\n>>> G.get_edge_data(*e)  # tuple form\n{}\n>>> G.get_edge_data(\"a\", \"b\", default=0)  # edge not in graph, return 0\n0",
+  "code": "def get_edge_data(self, u, v, default=None):\n    try:\n        return self._adj[u][v]\n    except KeyError:\n        return default"
+ },
+ {
+  "docstring": "Returns an iterator over (node, adjacency dict) tuples for all nodes.\n\nFor directed graphs, only outgoing neighbors/adjacencies are included.\n\nReturns\n-------\nadj_iter : iterator\n   An iterator over (node, adjacency dictionary) for all nodes in\n   the graph.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> [(n, nbrdict) for n, nbrdict in G.adjacency()]\n[(0, {1: {}}), (1, {0: {}, 2: {}}), (2, {1: {}, 3: {}}), (3, {2: {}})]",
+  "code": "def adjacency(self):\n    return iter(self._adj.items())"
+ },
+ {
+  "docstring": "A DegreeView for the Graph as G.degree or G.degree().\n\nThe node degree is the number of edges adjacent to the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator for (node, degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nDegreeView or int\n    If multiple nodes are requested (the default), returns a `DegreeView`\n    mapping nodes to their degree.\n    If a single node is requested, returns the degree of the node as an integer.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.degree[0]  # node 0 has degree 1\n1\n>>> list(G.degree([0, 1, 2]))\n[(0, 1), (1, 2), (2, 2)]",
+  "code": "@cached_property\ndef degree(self):\n    return DegreeView(self)"
+ },
+ {
+  "docstring": "Remove all nodes and edges from the graph.\n\nThis also removes the name, and all graph, node, and edge attributes.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.clear()\n>>> list(G.nodes)\n[]\n>>> list(G.edges)\n[]",
+  "code": "def clear(self):\n    self._adj.clear()\n    self._node.clear()\n    self.graph.clear()"
+ },
+ {
+  "docstring": "Remove all edges from the graph without altering nodes.\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.clear_edges()\n>>> list(G.nodes)\n[0, 1, 2, 3]\n>>> list(G.edges)\n[]",
+  "code": "def clear_edges(self):\n    for neighbours_dict in self._adj.values():\n        neighbours_dict.clear()"
+ },
+ {
+  "docstring": "Returns True if graph is a multigraph, False otherwise.",
+  "code": "def is_multigraph(self):\n    return False"
+ },
+ {
+  "docstring": "Returns True if graph is directed, False otherwise.",
+  "code": "def is_directed(self):\n    return False"
+ },
+ {
+  "docstring": "Returns a copy of the graph.\n\nThe copy method by default returns an independent shallow copy\nof the graph and attributes. That is, if an attribute is a\ncontainer, that container is shared by the original an the copy.\nUse Python's `copy.deepcopy` for new containers.\n\nIf `as_view` is True then a view is returned instead of a copy.\n\n",
+  "code": "def copy(self, as_view=False):\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self)\n    G = self.__class__()\n    G.graph.update(self.graph)\n    G.add_nodes_from(((n, d.copy()) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, datadict.copy()) for u, nbrs in self._adj.items() for v, datadict in nbrs.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns a directed representation of the graph.\n\nReturns\n-------\nG : DiGraph\n    A directed graph with the same name, same nodes, and with\n    each edge (u, v, data) replaced by two directed edges\n    (u, v, data) and (v, u, data).\n\n",
+  "code": "def to_directed(self, as_view=False):\n    graph_class = self.to_directed_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, deepcopy(data)) for u, nbrs in self._adj.items() for v, data in nbrs.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns an undirected copy of the graph.\n\nParameters\n----------\nas_view : bool (optional, default=False)\n  If True return a view of the original undirected graph.\n\nReturns\n-------\nG : Graph/MultiGraph\n    A deepcopy of the graph.\n\nSee Also\n--------\nGraph, copy, add_edge, add_edges_from\n\n",
+  "code": "def to_undirected(self, as_view=False):\n    graph_class = self.to_undirected_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, deepcopy(d)) for u, nbrs in self._adj.items() for v, d in nbrs.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns a SubGraph view of the subgraph induced on `nodes`.\n\nThe induced subgraph of the graph contains the nodes in `nodes`\nand the edges between those nodes.\n\nParameters\n----------\nnodes : list, iterable\n    A container of nodes which will be iterated through once.\n\nReturns\n-------\nG : SubGraph View\n    A subgraph view of the graph. The graph structure cannot be\n    changed but node/edge attributes can and are shared with the\n    original graph.\n\n",
+  "code": "def subgraph(self, nodes):\n    induced_nodes = nx.filters.show_nodes(self.nbunch_iter(nodes))\n    subgraph = nx.subgraph_view\n    if hasattr(self, '_NODE_OK'):\n        return subgraph(self._graph, filter_node=induced_nodes, filter_edge=self._EDGE_OK)\n    return subgraph(self, filter_node=induced_nodes)"
+ },
+ {
+  "docstring": "Returns the subgraph induced by the specified edges.\n\nThe induced subgraph contains each edge in `edges` and each\nnode incident to any one of those edges.\n\nParameters\n----------\nedges : iterable\n    An iterable of edges in this graph.\n\nReturns\n-------\nG : Graph\n    An edge-induced subgraph of this graph with the same edge\n    attributes.\n\n",
+  "code": "def edge_subgraph(self, edges):\n    return nx.edge_subgraph(self, edges)"
+ },
+ {
+  "docstring": "Returns the number of edges or total of all edge weights.\n\nParameters\n----------\nweight : string or None, optional (default=None)\n    The edge attribute that holds the numerical value used\n    as a weight. If None, then each edge has weight 1.\n\nReturns\n-------\nsize : numeric\n    The number of edges or\n    (if weight keyword is provided) the total weight sum.\n\n    If weight is None, returns an int. Otherwise a float\n    (or more general numeric if the weights are more general).\n\nSee Also\n--------\nnumber_of_edges\n\nExamples\n--------\n>>> G = nx.path_graph(4)  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.size()\n3\n\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G.add_edge(\"a\", \"b\", weight=2)\n>>> G.add_edge(\"b\", \"c\", weight=4)\n>>> G.size()\n2\n>>> G.size(weight=\"weight\")\n6.0",
+  "code": "def size(self, weight=None):\n    s = sum((d for v, d in self.degree(weight=weight)))\n    return s // 2 if weight is None else s / 2"
+ },
+ {
+  "docstring": "Returns the number of edges between two nodes.\n\nParameters\n----------\nu, v : nodes, optional (default=all edges)\n    If u and v are specified, return the number of edges between\n    u and v. Otherwise return the total number of all edges.\n\nReturns\n-------\nnedges : int\n    The number of edges in the graph.  If nodes `u` and `v` are\n    specified return the number of edges between those nodes. If\n    the graph is directed, this only returns the number of edges\n    from `u` to `v`.\n\nSee Also\n--------\nsize\n\nExamples\n--------\nFor undirected graphs, this method counts the total number of\nedges in the graph:\n\n>>> G = nx.path_graph(4)\n>>> G.number_of_edges()\n3\n\nIf you specify two nodes, this counts the total number of edges\njoining the two nodes:\n\n>>> G.number_of_edges(0, 1)\n1\n\nFor directed graphs, this method can count the total number of\ndirected edges from `u` to `v`:\n\n>>> G = nx.DiGraph()\n>>> G.add_edge(0, 1)\n>>> G.add_edge(1, 0)\n>>> G.number_of_edges(0, 1)\n1",
+  "code": "def number_of_edges(self, u=None, v=None):\n    if u is None:\n        return int(self.size())\n    if v in self._adj[u]:\n        return 1\n    return 0"
+ },
+ {
+  "docstring": "Returns an iterator over nodes contained in nbunch that are\nalso in the graph.\n\nThe nodes in nbunch are checked for membership in the graph\nand if not are silently ignored.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nReturns\n-------\nniter : iterator\n    An iterator over nodes in nbunch that are also in the graph.\n    If nbunch is None, iterate over all nodes in the graph.\n\nRaises\n------\nNetworkXError\n    If nbunch is not a node or sequence of nodes.\n    If a node in nbunch is not hashable.\n\nSee Also\n--------\nGraph.__iter__\n\n",
+  "code": "def nbunch_iter(self, nbunch=None):\n    if nbunch is None:\n        bunch = iter(self._adj)\n    elif nbunch in self:\n        bunch = iter([nbunch])\n    else:\n\n        def bunch_iter(nlist, adj):\n            try:\n                for n in nlist:\n                    if n in adj:\n                        yield n\n            except TypeError as err:\n                exc, message = (err, err.args[0])\n                if 'iter' in message:\n                    exc = NetworkXError('nbunch is not a node or a sequence of nodes.')\n                if 'hashable' in message:\n                    exc = NetworkXError(f'Node {n} in sequence nbunch is not a valid node.')\n                raise exc\n        bunch = bunch_iter(nbunch, self._adj)\n    return bunch"
+ },
+ {
+  "docstring": "Returns a read-only view of `G`.\n\nThe graph `G` and its attributes are not copied but viewed through the new graph object\nof the same class as `G` (or of the class specified in `create_using`).\n\nParameters\n----------\nG : graph\n    A directed/undirected graph/multigraph.\n\ncreate_using : NetworkX graph constructor, optional (default=None)\n   Graph type to create. If graph instance, then cleared before populated.\n   If `None`, then the appropriate Graph type is inferred from `G`.\n\nReturns\n-------\nnewG : graph\n    A view of the input graph `G` and its attributes as viewed through\n    the `create_using` class.\n\nRaises\n------\nNetworkXError\n    If `G` is a multigraph (or multidigraph) but `create_using` is not, or vice versa.\n\n",
+  "code": "def generic_graph_view(G, create_using=None):\n    if create_using is None:\n        newG = G.__class__()\n    else:\n        newG = nx.empty_graph(0, create_using)\n    if G.is_multigraph() != newG.is_multigraph():\n        raise NetworkXError('Multigraph for G must agree with create_using')\n    newG = nx.freeze(newG)\n    newG._graph = G\n    newG.graph = G.graph\n    newG._node = G._node\n    if newG.is_directed():\n        if G.is_directed():\n            newG._succ = G._succ\n            newG._pred = G._pred\n        else:\n            newG._succ = G._adj\n            newG._pred = G._adj\n    elif G.is_directed():\n        if G.is_multigraph():\n            newG._adj = UnionMultiAdjacency(G._succ, G._pred)\n        else:\n            newG._adj = UnionAdjacency(G._succ, G._pred)\n    else:\n        newG._adj = G._adj\n    return newG"
+ },
+ {
+  "docstring": "View of `G` applying a filter on nodes and edges.\n\n`subgraph_view` provides a read-only view of the input graph that excludes\nnodes and edges based on the outcome of two filter functions `filter_node`\nand `filter_edge`.\n\nThe `filter_node` function takes one argument --- the node --- and returns\n`True` if the node should be included in the subgraph, and `False` if it\nshould not be included.\n\nThe `filter_edge` function takes two (or three arguments if `G` is a\nmulti-graph) --- the nodes describing an edge, plus the edge-key if\nparallel edges are possible --- and returns `True` if the edge should be\nincluded in the subgraph, and `False` if it should not be included.\n\nBoth node and edge filter functions are called on graph elements as they\nare queried, meaning there is no up-front cost to creating the view.\n\nParameters\n----------\nG : networkx.Graph\n    A directed/undirected graph/multigraph\n\nfilter_node : callable, optional\n    A function taking a node as input, which returns `True` if the node\n    should appear in the view.\n\nfilter_edge : callable, optional\n    A function taking as input the two nodes describing an edge (plus the\n    edge-key if `G` is a multi-graph), which returns `True` if the edge\n    should appear in the view.\n\nReturns\n-------\ngraph : networkx.Graph\n    A read-only graph view of the input graph.\n\nExamples\n--------\n>>> G = nx.path_graph(6)\n\nFilter functions operate on the node, and return `True` if the node should\nappear in the view:\n\n>>> def filter_node(n1):\n...     return n1 != 5\n...\n>>> view = nx.subgraph_view(G, filter_node=filter_node)\n>>> view.nodes()\nNodeView((0, 1, 2, 3, 4))\n\nWe can use a closure pattern to filter graph elements based on additional\ndata --- for example, filtering on edge data attached to the graph:\n\n>>> G[3][4][\"cross_me\"] = False\n>>> def filter_edge(n1, n2):\n...     return G[n1][n2].get(\"cross_me\", True)\n...\n>>> view = nx.subgraph_view(G, filter_edge=filter_edge)\n>>> view.edges()\nEdgeView([(0, 1), (1, 2), (2, 3), (4, 5)])\n\n>>> view = nx.subgraph_view(G, filter_node=filter_node, filter_edge=filter_edge,)\n>>> view.nodes()\nNodeView((0, 1, 2, 3, 4))\n>>> view.edges()\nEdgeView([(0, 1), (1, 2), (2, 3)])",
+  "code": "@deprecate_positional_args(version='3.4')\ndef subgraph_view(G, *, filter_node=no_filter, filter_edge=no_filter):\n    newG = nx.freeze(G.__class__())\n    newG._NODE_OK = filter_node\n    newG._EDGE_OK = filter_edge\n    newG._graph = G\n    newG.graph = G.graph\n    newG._node = FilterAtlas(G._node, filter_node)\n    if G.is_multigraph():\n        Adj = FilterMultiAdjacency\n\n        def reverse_edge(u, v, k=None):\n            return filter_edge(v, u, k)\n    else:\n        Adj = FilterAdjacency\n\n        def reverse_edge(u, v, k=None):\n            return filter_edge(v, u)\n    if G.is_directed():\n        newG._succ = Adj(G._succ, filter_node, filter_edge)\n        newG._pred = Adj(G._pred, filter_node, reverse_edge)\n    else:\n        newG._adj = Adj(G._adj, filter_node, filter_edge)\n    return newG"
+ },
+ {
+  "docstring": "View of `G` with edge directions reversed\n\n`reverse_view` returns a read-only view of the input graph where\nedge directions are reversed.\n\nIdentical to digraph.reverse(copy=False)\n\nParameters\n----------\nG : networkx.DiGraph\n\nReturns\n-------\ngraph : networkx.DiGraph\n\nExamples\n--------\n>>> G = nx.DiGraph()\n>>> G.add_edge(1, 2)\n>>> G.add_edge(2, 3)\n>>> G.edges()\nOutEdgeView([(1, 2), (2, 3)])\n\n>>> view = nx.reverse_view(G)\n>>> view.edges()\nOutEdgeView([(2, 1), (3, 2)])",
+  "code": "@not_implemented_for('undirected')\ndef reverse_view(G):\n    newG = generic_graph_view(G)\n    newG._succ, newG._pred = (G._pred, G._succ)\n    return newG"
+ },
+ {
+  "docstring": "Initialize a graph with edges, name, or graph attributes.\n\nParameters\n----------\nincoming_graph_data : input graph\n    Data to initialize graph.  If incoming_graph_data=None (default)\n    an empty graph is created.  The data can be an edge list, or any\n    NetworkX graph object.  If the corresponding optional Python\n    packages are installed the data can also be a 2D NumPy array, a\n    SciPy sparse array, or a PyGraphviz graph.\n\nmultigraph_input : bool or None (default None)\n    Note: Only used when `incoming_graph_data` is a dict.\n    If True, `incoming_graph_data` is assumed to be a\n    dict-of-dict-of-dict-of-dict structure keyed by\n    node to neighbor to edge keys to edge data for multi-edges.\n    A NetworkXError is raised if this is not the case.\n    If False, :func:`to_networkx_graph` is used to try to determine\n    the dict's graph data structure as either a dict-of-dict-of-dict\n    keyed by node to neighbor to edge data, or a dict-of-iterable\n    keyed by node to neighbors.\n    If None, the treatment for True is tried, but if it fails,\n    the treatment for False is tried.\n\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to graph as key=value pairs.\n\nSee Also\n--------\nconvert\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> G = nx.Graph(name=\"my graph\")\n>>> e = [(1, 2), (2, 3), (3, 4)]  # list of edges\n>>> G = nx.Graph(e)\n\nArbitrary graph attribute pairs (key=value) may be assigned\n\n>>> G = nx.Graph(e, day=\"Friday\")\n>>> G.graph\n{'day': 'Friday'}",
+  "code": "def __init__(self, incoming_graph_data=None, multigraph_input=None, **attr):\n    if isinstance(incoming_graph_data, dict) and multigraph_input is not False:\n        DiGraph.__init__(self)\n        try:\n            convert.from_dict_of_dicts(incoming_graph_data, create_using=self, multigraph_input=True)\n            self.graph.update(attr)\n        except Exception as err:\n            if multigraph_input is True:\n                raise nx.NetworkXError(f'converting multigraph_input raised:\\n{type(err)}: {err}')\n            DiGraph.__init__(self, incoming_graph_data, **attr)\n    else:\n        DiGraph.__init__(self, incoming_graph_data, **attr)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the neighbors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edgekey-dict.  So `G.adj[3][2][0]['color'] = 'blue'` sets\nthe color of the edge `(3, 2, 0)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, datadict in G.adj[n].items():`.\n\nThe neighbor information is also provided by subscripting the graph.\nSo `for nbr, foovalue in G[node].data('foo', default=1):` works.\n\nFor directed graphs, `G.adj` holds outgoing (successor) info.",
+  "code": "@cached_property\ndef adj(self):\n    return MultiAdjacencyView(self._succ)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the successors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edgekey-dict.  So `G.adj[3][2][0]['color'] = 'blue'` sets\nthe color of the edge `(3, 2, 0)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, datadict in G.adj[n].items():`.\n\nThe neighbor information is also provided by subscripting the graph.\nSo `for nbr, foovalue in G[node].data('foo', default=1):` works.\n\nFor directed graphs, `G.succ` is identical to `G.adj`.",
+  "code": "@cached_property\ndef succ(self):\n    return MultiAdjacencyView(self._succ)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the predecessors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edgekey-dict.  So `G.adj[3][2][0]['color'] = 'blue'` sets\nthe color of the edge `(3, 2, 0)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, datadict in G.adj[n].items():`.",
+  "code": "@cached_property\ndef pred(self):\n    return MultiAdjacencyView(self._pred)"
+ },
+ {
+  "docstring": "Add an edge between u and v.\n\nThe nodes u and v will be automatically added if they are\nnot already in the graph.\n\nEdge attributes can be specified with keywords or by directly\naccessing the edge's attribute dictionary. See examples below.\n\nParameters\n----------\nu_for_edge, v_for_edge : nodes\n    Nodes can be, for example, strings or numbers.\n    Nodes must be hashable (and not None) Python objects.\nkey : hashable identifier, optional (default=lowest unused integer)\n    Used to distinguish multiedges between a pair of nodes.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nReturns\n-------\nThe edge key assigned to the edge.\n\nSee Also\n--------\nadd_edges_from : add a collection of edges\n\n",
+  "code": "def add_edge(self, u_for_edge, v_for_edge, key=None, **attr):\n    u, v = (u_for_edge, v_for_edge)\n    if u not in self._succ:\n        if u is None:\n            raise ValueError('None cannot be a node')\n        self._succ[u] = self.adjlist_inner_dict_factory()\n        self._pred[u] = self.adjlist_inner_dict_factory()\n        self._node[u] = self.node_attr_dict_factory()\n    if v not in self._succ:\n        if v is None:\n            raise ValueError('None cannot be a node')\n        self._succ[v] = self.adjlist_inner_dict_factory()\n        self._pred[v] = self.adjlist_inner_dict_factory()\n        self._node[v] = self.node_attr_dict_factory()\n    if key is None:\n        key = self.new_edge_key(u, v)\n    if v in self._succ[u]:\n        keydict = self._adj[u][v]\n        datadict = keydict.get(key, self.edge_attr_dict_factory())\n        datadict.update(attr)\n        keydict[key] = datadict\n    else:\n        datadict = self.edge_attr_dict_factory()\n        datadict.update(attr)\n        keydict = self.edge_key_dict_factory()\n        keydict[key] = datadict\n        self._succ[u][v] = keydict\n        self._pred[v][u] = keydict\n    return key"
+ },
+ {
+  "docstring": "Remove an edge between u and v.\n\nParameters\n----------\nu, v : nodes\n    Remove an edge between nodes u and v.\nkey : hashable identifier, optional (default=None)\n    Used to distinguish multiple edges between a pair of nodes.\n    If None, remove a single edge between u and v. If there are\n    multiple edges, removes the last edge added in terms of\n    insertion order.\n\nRaises\n------\nNetworkXError\n    If there is not an edge between u and v, or\n    if there is no edge with the specified key.\n\nSee Also\n--------\nremove_edges_from : remove a collection of edges\n\nExamples\n--------\n>>> G = nx.MultiDiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.remove_edge(0, 1)\n>>> e = (1, 2)\n>>> G.remove_edge(*e)  # unpacks e from an edge tuple\n\nFor multiple edges\n\n>>> G = nx.MultiDiGraph()\n>>> G.add_edges_from([(1, 2), (1, 2), (1, 2)])  # key_list returned\n[0, 1, 2]\n\nWhen ``key=None`` (the default), edges are removed in the opposite\norder that they were added:\n\n>>> G.remove_edge(1, 2)\n>>> G.edges(keys=True)\nOutMultiEdgeView([(1, 2, 0), (1, 2, 1)])\n\nFor edges with keys\n\n>>> G = nx.MultiDiGraph()\n>>> G.add_edge(1, 2, key=\"first\")\n'first'\n>>> G.add_edge(1, 2, key=\"second\")\n'second'\n>>> G.remove_edge(1, 2, key=\"first\")\n>>> G.edges(keys=True)\nOutMultiEdgeView([(1, 2, 'second')])",
+  "code": "def remove_edge(self, u, v, key=None):\n    try:\n        d = self._adj[u][v]\n    except KeyError as err:\n        raise NetworkXError(f'The edge {u}-{v} is not in the graph.') from err\n    if key is None:\n        d.popitem()\n    else:\n        try:\n            del d[key]\n        except KeyError as err:\n            msg = f'The edge {u}-{v} with key {key} is not in the graph.'\n            raise NetworkXError(msg) from err\n    if len(d) == 0:\n        del self._succ[u][v]\n        del self._pred[v][u]"
+ },
+ {
+  "docstring": "An OutMultiEdgeView of the Graph as G.edges or G.edges().\n\nedges(self, nbunch=None, data=False, keys=False, default=None)\n\nThe OutMultiEdgeView provides set-like operations on the edge-tuples\nas well as edge attribute lookup. When called, it also provides\nan EdgeDataView object which allows control of access to edge\nattributes (but does not provide set-like operations).\nHence, ``G.edges[u, v, k]['color']`` provides the value of the color\nattribute for the edge from ``u`` to ``v`` with key ``k`` while\n``for (u, v, k, c) in G.edges(data='color', default='red', keys=True):``\niterates through all the edges yielding the color attribute with\ndefault `'red'` if no color attribute exists.\n\nEdges are returned as tuples with optional data and keys\nin the order (node, neighbor, key, data). If ``keys=True`` is not\nprovided, the tuples will just be (node, neighbor, data), but\nmultiple tuples with the same node and neighbor will be\ngenerated when multiple edges between two nodes exist.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges from these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\nkeys : bool, optional (default=False)\n    If True, return edge keys with each edge, creating (u, v, k,\n    d) tuples when data is also requested (the default) and (u,\n    v, k) tuples when data is not requested.\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nedges : OutMultiEdgeView\n    A view of edge attributes, usually it iterates over (u, v)\n    (u, v, k) or (u, v, k, d) tuples of edges, but can also be\n    used for attribute lookup as ``edges[u, v, k]['foo']``.\n\n",
+  "code": "@cached_property\ndef edges(self):\n    return OutMultiEdgeView(self)"
+ },
+ {
+  "docstring": "A view of the in edges of the graph as G.in_edges or G.in_edges().\n\nin_edges(self, nbunch=None, data=False, keys=False, default=None)\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\nkeys : bool, optional (default=False)\n    If True, return edge keys with each edge, creating 3-tuples\n    (u, v, k) or with data, 4-tuples (u, v, k, d).\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nin_edges : InMultiEdgeView or InMultiEdgeDataView\n    A view of edge attributes, usually it iterates over (u, v)\n    or (u, v, k) or (u, v, k, d) tuples of edges, but can also be\n    used for attribute lookup as `edges[u, v, k]['foo']`.\n\nSee Also\n--------\nedges",
+  "code": "@cached_property\ndef in_edges(self):\n    return InMultiEdgeView(self)"
+ },
+ {
+  "docstring": "A DegreeView for the Graph as G.degree or G.degree().\n\nThe node degree is the number of edges adjacent to the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator for (node, degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nDiMultiDegreeView or int\n    If multiple nodes are requested (the default), returns a `DiMultiDegreeView`\n    mapping nodes to their degree.\n    If a single node is requested, returns the degree of the node as an integer.\n\nSee Also\n--------\nout_degree, in_degree\n\nExamples\n--------\n>>> G = nx.MultiDiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.degree(0)  # node 0 with degree 1\n1\n>>> list(G.degree([0, 1, 2]))\n[(0, 1), (1, 2), (2, 2)]\n>>> G.add_edge(0, 1) # parallel edge\n1\n>>> list(G.degree([0, 1, 2])) # parallel edges are counted\n[(0, 2), (1, 3), (2, 2)]",
+  "code": "@cached_property\ndef degree(self):\n    return DiMultiDegreeView(self)"
+ },
+ {
+  "docstring": "A DegreeView for (node, in_degree) or in_degree for single node.\n\nThe node in-degree is the number of edges pointing into the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator for (node, degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nIf a single node is requested\ndeg : int\n    Degree of the node\n\nOR if multiple nodes are requested\nnd_iter : iterator\n    The iterator returns two-tuples of (node, in-degree).\n\nSee Also\n--------\ndegree, out_degree\n\nExamples\n--------\n>>> G = nx.MultiDiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.in_degree(0)  # node 0 with degree 0\n0\n>>> list(G.in_degree([0, 1, 2]))\n[(0, 0), (1, 1), (2, 1)]\n>>> G.add_edge(0, 1) # parallel edge\n1\n>>> list(G.in_degree([0, 1, 2])) # parallel edges counted\n[(0, 0), (1, 2), (2, 1)]",
+  "code": "@cached_property\ndef in_degree(self):\n    return InMultiDegreeView(self)"
+ },
+ {
+  "docstring": "Returns an iterator for (node, out-degree) or out-degree for single node.\n\nout_degree(self, nbunch=None, weight=None)\n\nThe node out-degree is the number of edges pointing out of the node.\nThis function returns the out-degree for a single node or an iterator\nfor a bunch of nodes or if nothing is passed as argument.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights.\n\nReturns\n-------\nIf a single node is requested\ndeg : int\n    Degree of the node\n\nOR if multiple nodes are requested\nnd_iter : iterator\n    The iterator returns two-tuples of (node, out-degree).\n\nSee Also\n--------\ndegree, in_degree\n\nExamples\n--------\n>>> G = nx.MultiDiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.out_degree(0)  # node 0 with degree 1\n1\n>>> list(G.out_degree([0, 1, 2]))\n[(0, 1), (1, 1), (2, 1)]\n>>> G.add_edge(0, 1) # parallel edge\n1\n>>> list(G.out_degree([0, 1, 2])) # counts parallel edges\n[(0, 2), (1, 1), (2, 1)]",
+  "code": "@cached_property\ndef out_degree(self):\n    return OutMultiDegreeView(self)"
+ },
+ {
+  "docstring": "Returns True if graph is a multigraph, False otherwise.",
+  "code": "def is_multigraph(self):\n    return True"
+ },
+ {
+  "docstring": "Returns True if graph is directed, False otherwise.",
+  "code": "def is_directed(self):\n    return True"
+ },
+ {
+  "docstring": "Returns an undirected representation of the digraph.\n\nParameters\n----------\nreciprocal : bool (optional)\n  If True only keep edges that appear in both directions\n  in the original digraph.\nas_view : bool (optional, default=False)\n  If True return an undirected view of the original directed graph.\n\nReturns\n-------\nG : MultiGraph\n    An undirected graph with the same name and nodes and\n    with edge (u, v, data) if either (u, v, data) or (v, u, data)\n    is in the digraph.  If both edges exist in digraph and\n    their edge data is different, only one edge is created\n    with an arbitrary choice of which edge data to use.\n    You must check and correct for this manually if desired.\n\nSee Also\n--------\nMultiGraph, copy, add_edge, add_edges_from\n\n",
+  "code": "def to_undirected(self, reciprocal=False, as_view=False):\n    graph_class = self.to_undirected_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    if reciprocal is True:\n        G.add_edges_from(((u, v, key, deepcopy(data)) for u, nbrs in self._adj.items() for v, keydict in nbrs.items() for key, data in keydict.items() if v in self._pred[u] and key in self._pred[u][v]))\n    else:\n        G.add_edges_from(((u, v, key, deepcopy(data)) for u, nbrs in self._adj.items() for v, keydict in nbrs.items() for key, data in keydict.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns the reverse of the graph.\n\nThe reverse is a graph with the same nodes and edges\nbut with the directions of the edges reversed.\n\nParameters\n----------\ncopy : bool optional (default=True)\n    If True, return a new DiGraph holding the reversed edges.\n    If False, the reverse graph is created using a view of\n    the original graph.",
+  "code": "def reverse(self, copy=True):\n    if copy:\n        H = self.__class__()\n        H.graph.update(deepcopy(self.graph))\n        H.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n        H.add_edges_from(((v, u, k, deepcopy(d)) for u, v, k, d in self.edges(keys=True, data=True)))\n        return H\n    return nx.reverse_view(self)"
+ },
+ {
+  "docstring": "Returns the class to use for empty directed copies.\n\nIf you subclass the base classes, use this to designate\nwhat directed class to use for `to_directed()` copies.",
+  "code": "def to_directed_class(self):\n    return nx.MultiDiGraph"
+ },
+ {
+  "docstring": "Returns the class to use for empty undirected copies.\n\nIf you subclass the base classes, use this to designate\nwhat directed class to use for `to_directed()` copies.",
+  "code": "def to_undirected_class(self):\n    return MultiGraph"
+ },
+ {
+  "docstring": "Initialize a graph with edges, name, or graph attributes.\n\nParameters\n----------\nincoming_graph_data : input graph\n    Data to initialize graph.  If incoming_graph_data=None (default)\n    an empty graph is created.  The data can be an edge list, or any\n    NetworkX graph object.  If the corresponding optional Python\n    packages are installed the data can also be a 2D NumPy array, a\n    SciPy sparse array, or a PyGraphviz graph.\n\nmultigraph_input : bool or None (default None)\n    Note: Only used when `incoming_graph_data` is a dict.\n    If True, `incoming_graph_data` is assumed to be a\n    dict-of-dict-of-dict-of-dict structure keyed by\n    node to neighbor to edge keys to edge data for multi-edges.\n    A NetworkXError is raised if this is not the case.\n    If False, :func:`to_networkx_graph` is used to try to determine\n    the dict's graph data structure as either a dict-of-dict-of-dict\n    keyed by node to neighbor to edge data, or a dict-of-iterable\n    keyed by node to neighbors.\n    If None, the treatment for True is tried, but if it fails,\n    the treatment for False is tried.\n\nattr : keyword arguments, optional (default= no attributes)\n    Attributes to add to graph as key=value pairs.\n\nSee Also\n--------\nconvert\n\nExamples\n--------\n>>> G = nx.MultiGraph()\n>>> G = nx.MultiGraph(name=\"my graph\")\n>>> e = [(1, 2), (1, 2), (2, 3), (3, 4)]  # list of edges\n>>> G = nx.MultiGraph(e)\n\nArbitrary graph attribute pairs (key=value) may be assigned\n\n>>> G = nx.MultiGraph(e, day=\"Friday\")\n>>> G.graph\n{'day': 'Friday'}",
+  "code": "def __init__(self, incoming_graph_data=None, multigraph_input=None, **attr):\n    if isinstance(incoming_graph_data, dict) and multigraph_input is not False:\n        Graph.__init__(self)\n        try:\n            convert.from_dict_of_dicts(incoming_graph_data, create_using=self, multigraph_input=True)\n            self.graph.update(attr)\n        except Exception as err:\n            if multigraph_input is True:\n                raise nx.NetworkXError(f'converting multigraph_input raised:\\n{type(err)}: {err}')\n            Graph.__init__(self, incoming_graph_data, **attr)\n    else:\n        Graph.__init__(self, incoming_graph_data, **attr)"
+ },
+ {
+  "docstring": "Graph adjacency object holding the neighbors of each node.\n\nThis object is a read-only dict-like structure with node keys\nand neighbor-dict values.  The neighbor-dict is keyed by neighbor\nto the edgekey-data-dict.  So `G.adj[3][2][0]['color'] = 'blue'` sets\nthe color of the edge `(3, 2, 0)` to `\"blue\"`.\n\nIterating over G.adj behaves like a dict. Useful idioms include\n`for nbr, edgesdict in G.adj[n].items():`.\n\nThe neighbor information is also provided by subscripting the graph.\n\nExamples\n--------\n>>> e = [(1, 2), (1, 2), (1, 3), (3, 4)]  # list of edges\n>>> G = nx.MultiGraph(e)\n>>> G.edges[1, 2, 0][\"weight\"] = 3\n>>> result = set()\n>>> for edgekey, data in G[1][2].items():\n...     result.add(data.get('weight', 1))\n>>> result\n{1, 3}\n\nFor directed graphs, `G.adj` holds outgoing (successor) info.",
+  "code": "@cached_property\ndef adj(self):\n    return MultiAdjacencyView(self._adj)"
+ },
+ {
+  "docstring": "Returns an unused key for edges between nodes `u` and `v`.\n\nThe nodes `u` and `v` do not need to be already in the graph.\n\n",
+  "code": "def new_edge_key(self, u, v):\n    try:\n        keydict = self._adj[u][v]\n    except KeyError:\n        return 0\n    key = len(keydict)\n    while key in keydict:\n        key += 1\n    return key"
+ },
+ {
+  "docstring": "Add an edge between u and v.\n\nThe nodes u and v will be automatically added if they are\nnot already in the graph.\n\nEdge attributes can be specified with keywords or by directly\naccessing the edge's attribute dictionary. See examples below.\n\nParameters\n----------\nu_for_edge, v_for_edge : nodes\n    Nodes can be, for example, strings or numbers.\n    Nodes must be hashable (and not None) Python objects.\nkey : hashable identifier, optional (default=lowest unused integer)\n    Used to distinguish multiedges between a pair of nodes.\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nReturns\n-------\nThe edge key assigned to the edge.\n\nSee Also\n--------\nadd_edges_from : add a collection of edges\n\n",
+  "code": "def add_edge(self, u_for_edge, v_for_edge, key=None, **attr):\n    u, v = (u_for_edge, v_for_edge)\n    if u not in self._adj:\n        if u is None:\n            raise ValueError('None cannot be a node')\n        self._adj[u] = self.adjlist_inner_dict_factory()\n        self._node[u] = self.node_attr_dict_factory()\n    if v not in self._adj:\n        if v is None:\n            raise ValueError('None cannot be a node')\n        self._adj[v] = self.adjlist_inner_dict_factory()\n        self._node[v] = self.node_attr_dict_factory()\n    if key is None:\n        key = self.new_edge_key(u, v)\n    if v in self._adj[u]:\n        keydict = self._adj[u][v]\n        datadict = keydict.get(key, self.edge_attr_dict_factory())\n        datadict.update(attr)\n        keydict[key] = datadict\n    else:\n        datadict = self.edge_attr_dict_factory()\n        datadict.update(attr)\n        keydict = self.edge_key_dict_factory()\n        keydict[key] = datadict\n        self._adj[u][v] = keydict\n        self._adj[v][u] = keydict\n    return key"
+ },
+ {
+  "docstring": "Add all the edges in ebunch_to_add.\n\nParameters\n----------\nebunch_to_add : container of edges\n    Each edge given in the container will be added to the\n    graph. The edges can be:\n\n        - 2-tuples (u, v) or\n        - 3-tuples (u, v, d) for an edge data dict d, or\n        - 3-tuples (u, v, k) for not iterable key k, or\n        - 4-tuples (u, v, k, d) for an edge with data and key k\n\nattr : keyword arguments, optional\n    Edge data (or labels or objects) can be assigned using\n    keyword arguments.\n\nReturns\n-------\nA list of edge keys assigned to the edges in `ebunch`.\n\nSee Also\n--------\nadd_edge : add a single edge\nadd_weighted_edges_from : convenient way to add weighted edges\n\n",
+  "code": "def add_edges_from(self, ebunch_to_add, **attr):\n    keylist = []\n    for e in ebunch_to_add:\n        ne = len(e)\n        if ne == 4:\n            u, v, key, dd = e\n        elif ne == 3:\n            u, v, dd = e\n            key = None\n        elif ne == 2:\n            u, v = e\n            dd = {}\n            key = None\n        else:\n            msg = f'Edge tuple {e} must be a 2-tuple, 3-tuple or 4-tuple.'\n            raise NetworkXError(msg)\n        ddd = {}\n        ddd.update(attr)\n        try:\n            ddd.update(dd)\n        except (TypeError, ValueError):\n            if ne != 3:\n                raise\n            key = dd\n        key = self.add_edge(u, v, key)\n        self[u][v][key].update(ddd)\n        keylist.append(key)\n    return keylist"
+ },
+ {
+  "docstring": "Remove an edge between u and v.\n\nParameters\n----------\nu, v : nodes\n    Remove an edge between nodes u and v.\nkey : hashable identifier, optional (default=None)\n    Used to distinguish multiple edges between a pair of nodes.\n    If None, remove a single edge between u and v. If there are\n    multiple edges, removes the last edge added in terms of\n    insertion order.\n\nRaises\n------\nNetworkXError\n    If there is not an edge between u and v, or\n    if there is no edge with the specified key.\n\nSee Also\n--------\nremove_edges_from : remove a collection of edges\n\nExamples\n--------\n>>> G = nx.MultiGraph()\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.remove_edge(0, 1)\n>>> e = (1, 2)\n>>> G.remove_edge(*e)  # unpacks e from an edge tuple\n\nFor multiple edges\n\n>>> G = nx.MultiGraph()  # or MultiDiGraph, etc\n>>> G.add_edges_from([(1, 2), (1, 2), (1, 2)])  # key_list returned\n[0, 1, 2]\n\nWhen ``key=None`` (the default), edges are removed in the opposite\norder that they were added:\n\n>>> G.remove_edge(1, 2)\n>>> G.edges(keys=True)\nMultiEdgeView([(1, 2, 0), (1, 2, 1)])\n>>> G.remove_edge(2, 1)  # edges are not directed\n>>> G.edges(keys=True)\nMultiEdgeView([(1, 2, 0)])\n\nFor edges with keys\n\n>>> G = nx.MultiGraph()\n>>> G.add_edge(1, 2, key=\"first\")\n'first'\n>>> G.add_edge(1, 2, key=\"second\")\n'second'\n>>> G.remove_edge(1, 2, key=\"first\")\n>>> G.edges(keys=True)\nMultiEdgeView([(1, 2, 'second')])",
+  "code": "def remove_edge(self, u, v, key=None):\n    try:\n        d = self._adj[u][v]\n    except KeyError as err:\n        raise NetworkXError(f'The edge {u}-{v} is not in the graph.') from err\n    if key is None:\n        d.popitem()\n    else:\n        try:\n            del d[key]\n        except KeyError as err:\n            msg = f'The edge {u}-{v} with key {key} is not in the graph.'\n            raise NetworkXError(msg) from err\n    if len(d) == 0:\n        del self._adj[u][v]\n        if u != v:\n            del self._adj[v][u]"
+ },
+ {
+  "docstring": "Remove all edges specified in ebunch.\n\nParameters\n----------\nebunch: list or container of edge tuples\n    Each edge given in the list or container will be removed\n    from the graph. The edges can be:\n\n        - 2-tuples (u, v) A single edge between u and v is removed.\n        - 3-tuples (u, v, key) The edge identified by key is removed.\n        - 4-tuples (u, v, key, data) where data is ignored.\n\nSee Also\n--------\nremove_edge : remove a single edge\n\n",
+  "code": "def remove_edges_from(self, ebunch):\n    for e in ebunch:\n        try:\n            self.remove_edge(*e[:3])\n        except NetworkXError:\n            pass"
+ },
+ {
+  "docstring": "Returns True if the graph has an edge between nodes u and v.\n\nThis is the same as `v in G[u] or key in G[u][v]`\nwithout KeyError exceptions.\n\nParameters\n----------\nu, v : nodes\n    Nodes can be, for example, strings or numbers.\n\nkey : hashable identifier, optional (default=None)\n    If specified return True only if the edge with\n    key is found.\n\nReturns\n-------\nedge_ind : bool\n    True if edge is in the graph, False otherwise.\n\nExamples\n--------\nCan be called either using two nodes u, v, an edge tuple (u, v),\nor an edge tuple (u, v, key).\n\n>>> G = nx.MultiGraph()  # or MultiDiGraph\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.has_edge(0, 1)  # using two nodes\nTrue\n>>> e = (0, 1)\n>>> G.has_edge(*e)  #  e is a 2-tuple (u, v)\nTrue\n>>> G.add_edge(0, 1, key=\"a\")\n'a'\n>>> G.has_edge(0, 1, key=\"a\")  # specify key\nTrue\n>>> G.has_edge(1, 0, key=\"a\")  # edges aren't directed\nTrue\n>>> e = (0, 1, \"a\")\n>>> G.has_edge(*e)  # e is a 3-tuple (u, v, 'a')\nTrue\n\nThe following syntax are equivalent:\n\n>>> G.has_edge(0, 1)\nTrue\n>>> 1 in G[0]  # though this gives :exc:`KeyError` if 0 not in G\nTrue\n>>> 0 in G[1]  # other order; also gives :exc:`KeyError` if 0 not in G\nTrue",
+  "code": "def has_edge(self, u, v, key=None):\n    try:\n        if key is None:\n            return v in self._adj[u]\n        else:\n            return key in self._adj[u][v]\n    except KeyError:\n        return False"
+ },
+ {
+  "docstring": "Returns an iterator over the edges.\n\nedges(self, nbunch=None, data=False, keys=False, default=None)\n\nThe MultiEdgeView provides set-like operations on the edge-tuples\nas well as edge attribute lookup. When called, it also provides\nan EdgeDataView object which allows control of access to edge\nattributes (but does not provide set-like operations).\nHence, ``G.edges[u, v, k]['color']`` provides the value of the color\nattribute for the edge from ``u`` to ``v`` with key ``k`` while\n``for (u, v, k, c) in G.edges(data='color', keys=True, default=\"red\"):``\niterates through all the edges yielding the color attribute with\ndefault `'red'` if no color attribute exists.\n\nEdges are returned as tuples with optional data and keys\nin the order (node, neighbor, key, data). If ``keys=True`` is not\nprovided, the tuples will just be (node, neighbor, data), but\nmultiple tuples with the same node and neighbor will be generated\nwhen multiple edges exist between two nodes.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges from these nodes.\ndata : string or bool, optional (default=False)\n    The edge attribute returned in 3-tuple (u, v, ddict[data]).\n    If True, return edge attribute dict in 3-tuple (u, v, ddict).\n    If False, return 2-tuple (u, v).\nkeys : bool, optional (default=False)\n    If True, return edge keys with each edge, creating (u, v, k)\n    tuples or (u, v, k, d) tuples if data is also requested.\ndefault : value, optional (default=None)\n    Value used for edges that don't have the requested attribute.\n    Only relevant if data is not True or False.\n\nReturns\n-------\nedges : MultiEdgeView\n    A view of edge attributes, usually it iterates over (u, v)\n    (u, v, k) or (u, v, k, d) tuples of edges, but can also be\n    used for attribute lookup as ``edges[u, v, k]['foo']``.\n\n",
+  "code": "@cached_property\ndef edges(self):\n    return MultiEdgeView(self)"
+ },
+ {
+  "docstring": "Returns the attribute dictionary associated with edge (u, v,\nkey).\n\nIf a key is not provided, returns a dictionary mapping edge keys\nto attribute dictionaries for each edge between u and v.\n\nThis is identical to `G[u][v][key]` except the default is returned\ninstead of an exception is the edge doesn't exist.\n\nParameters\n----------\nu, v : nodes\n\ndefault :  any Python object (default=None)\n    Value to return if the specific edge (u, v, key) is not\n    found, OR if there are no edges between u and v and no key\n    is specified.\n\nkey : hashable identifier, optional (default=None)\n    Return data only for the edge with specified key, as an\n    attribute dictionary (rather than a dictionary mapping keys\n    to attribute dictionaries).\n\nReturns\n-------\nedge_dict : dictionary\n    The edge attribute dictionary, OR a dictionary mapping edge\n    keys to attribute dictionaries for each of those edges if no\n    specific key is provided (even if there's only one edge\n    between u and v).\n\nExamples\n--------\n>>> G = nx.MultiGraph()  # or MultiDiGraph\n>>> key = G.add_edge(0, 1, key=\"a\", weight=7)\n>>> G[0][1][\"a\"]  # key='a'\n{'weight': 7}\n>>> G.edges[0, 1, \"a\"]  # key='a'\n{'weight': 7}\n\nWarning: we protect the graph data structure by making\n`G.edges` and `G[1][2]` read-only dict-like structures.\nHowever, you can assign values to attributes in e.g.\n`G.edges[1, 2, 'a']` or `G[1][2]['a']` using an additional\nbracket as shown next. You need to specify all edge info\nto assign to the edge data associated with an edge.\n\n>>> G[0][1][\"a\"][\"weight\"] = 10\n>>> G.edges[0, 1, \"a\"][\"weight\"] = 10\n>>> G[0][1][\"a\"][\"weight\"]\n10\n>>> G.edges[1, 0, \"a\"][\"weight\"]\n10\n\n>>> G = nx.MultiGraph()  # or MultiDiGraph\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.edges[0, 1, 0][\"weight\"] = 5\n>>> G.get_edge_data(0, 1)\n{0: {'weight': 5}}\n>>> e = (0, 1)\n>>> G.get_edge_data(*e)  # tuple form\n{0: {'weight': 5}}\n>>> G.get_edge_data(3, 0)  # edge not in graph, returns None\n>>> G.get_edge_data(3, 0, default=0)  # edge not in graph, return default\n0\n>>> G.get_edge_data(1, 0, 0)  # specific key gives back\n{'weight': 5}",
+  "code": "def get_edge_data(self, u, v, key=None, default=None):\n    try:\n        if key is None:\n            return self._adj[u][v]\n        else:\n            return self._adj[u][v][key]\n    except KeyError:\n        return default"
+ },
+ {
+  "docstring": "A DegreeView for the Graph as G.degree or G.degree().\n\nThe node degree is the number of edges adjacent to the node.\nThe weighted node degree is the sum of the edge weights for\nedges incident to that node.\n\nThis object provides an iterator for (node, degree) as well as\nlookup for the degree for a single node.\n\nParameters\n----------\nnbunch : single node, container, or all nodes (default= all nodes)\n    The view will only report edges incident to these nodes.\n\nweight : string or None, optional (default=None)\n   The name of an edge attribute that holds the numerical value used\n   as a weight.  If None, then each edge has weight 1.\n   The degree is the sum of the edge weights adjacent to the node.\n\nReturns\n-------\nMultiDegreeView or int\n    If multiple nodes are requested (the default), returns a `MultiDegreeView`\n    mapping nodes to their degree.\n    If a single node is requested, returns the degree of the node as an integer.\n\nExamples\n--------\n>>> G = nx.Graph()  # or DiGraph, MultiGraph, MultiDiGraph, etc\n>>> nx.add_path(G, [0, 1, 2, 3])\n>>> G.degree(0)  # node 0 with degree 1\n1\n>>> list(G.degree([0, 1]))\n[(0, 1), (1, 2)]",
+  "code": "@cached_property\ndef degree(self):\n    return MultiDegreeView(self)"
+ },
+ {
+  "docstring": "Returns True if graph is a multigraph, False otherwise.",
+  "code": "def is_multigraph(self):\n    return True"
+ },
+ {
+  "docstring": "Returns True if graph is directed, False otherwise.",
+  "code": "def is_directed(self):\n    return False"
+ },
+ {
+  "docstring": "Returns a copy of the graph.\n\nThe copy method by default returns an independent shallow copy\nof the graph and attributes. That is, if an attribute is a\ncontainer, that container is shared by the original an the copy.\nUse Python's `copy.deepcopy` for new containers.\n\nIf `as_view` is True then a view is returned instead of a copy.\n\n",
+  "code": "def copy(self, as_view=False):\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self)\n    G = self.__class__()\n    G.graph.update(self.graph)\n    G.add_nodes_from(((n, d.copy()) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, key, datadict.copy()) for u, nbrs in self._adj.items() for v, keydict in nbrs.items() for key, datadict in keydict.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns a directed representation of the graph.\n\nReturns\n-------\nG : MultiDiGraph\n    A directed graph with the same name, same nodes, and with\n    each edge (u, v, k, data) replaced by two directed edges\n    (u, v, k, data) and (v, u, k, data).\n\n",
+  "code": "def to_directed(self, as_view=False):\n    graph_class = self.to_directed_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, key, deepcopy(datadict)) for u, nbrs in self.adj.items() for v, keydict in nbrs.items() for key, datadict in keydict.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns an undirected copy of the graph.\n\nReturns\n-------\nG : Graph/MultiGraph\n    A deepcopy of the graph.\n\nSee Also\n--------\ncopy, add_edge, add_edges_from\n\n",
+  "code": "def to_undirected(self, as_view=False):\n    graph_class = self.to_undirected_class()\n    if as_view is True:\n        return nx.graphviews.generic_graph_view(self, graph_class)\n    G = graph_class()\n    G.graph.update(deepcopy(self.graph))\n    G.add_nodes_from(((n, deepcopy(d)) for n, d in self._node.items()))\n    G.add_edges_from(((u, v, key, deepcopy(datadict)) for u, nbrs in self._adj.items() for v, keydict in nbrs.items() for key, datadict in keydict.items()))\n    return G"
+ },
+ {
+  "docstring": "Returns the number of edges between two nodes.\n\nParameters\n----------\nu, v : nodes, optional (Default=all edges)\n    If u and v are specified, return the number of edges between\n    u and v. Otherwise return the total number of all edges.\n\nReturns\n-------\nnedges : int\n    The number of edges in the graph.  If nodes `u` and `v` are\n    specified return the number of edges between those nodes. If\n    the graph is directed, this only returns the number of edges\n    from `u` to `v`.\n\nSee Also\n--------\nsize\n\nExamples\n--------\nFor undirected multigraphs, this method counts the total number\nof edges in the graph::\n\n    >>> G = nx.MultiGraph()\n    >>> G.add_edges_from([(0, 1), (0, 1), (1, 2)])\n    [0, 1, 0]\n    >>> G.number_of_edges()\n    3\n\nIf you specify two nodes, this counts the total number of edges\njoining the two nodes::\n\n    >>> G.number_of_edges(0, 1)\n    2\n\nFor directed multigraphs, this method can count the total number\nof directed edges from `u` to `v`::\n\n    >>> G = nx.MultiDiGraph()\n    >>> G.add_edges_from([(0, 1), (0, 1), (1, 0)])\n    [0, 1, 0]\n    >>> G.number_of_edges(0, 1)\n    2\n    >>> G.number_of_edges(1, 0)\n    1",
+  "code": "def number_of_edges(self, u=None, v=None):\n    if u is None:\n        return self.size()\n    try:\n        edgedata = self._adj[u][v]\n    except KeyError:\n        return 0\n    return len(edgedata)"
+ },
+ {
+  "docstring": "Return a read-only view of node data.\n\nParameters\n----------\ndata : bool or node data key, default=True\n    If ``data=True`` (the default), return a `NodeDataView` object that\n    maps each node to *all* of its attributes. `data` may also be an\n    arbitrary key, in which case the `NodeDataView` maps each node to\n    the value for the keyed attribute. In this case, if a node does\n    not have the `data` attribute, the `default` value is used.\ndefault : object, default=None\n    The value used when a node does not have a specific attribute.\n\nReturns\n-------\nNodeDataView\n    The layout of the returned NodeDataView depends on the value of the\n    `data` parameter.\n\n",
+  "code": "def data(self, data=True, default=None):\n    if data is False:\n        return self\n    return NodeDataView(self._nodes, data, default)"
+ },
+ {
+  "docstring": "Return a read-only view of edge data.\n\nParameters\n----------\ndata : bool or edge attribute key\n    If ``data=True``, then the data view maps each edge to a dictionary\n    containing all of its attributes. If `data` is a key in the edge\n    dictionary, then the data view maps each edge to its value for\n    the keyed attribute. In this case, if the edge doesn't have the\n    attribute, the `default` value is returned.\ndefault : object, default=None\n    The value used when an edge does not have a specific attribute\nnbunch : container of nodes, optional (default=None)\n    Allows restriction to edges only involving certain nodes. All edges\n    are considered by default.\n\nReturns\n-------\ndataview\n    Returns an `EdgeDataView` for undirected Graphs, `OutEdgeDataView`\n    for DiGraphs, `MultiEdgeDataView` for MultiGraphs and\n    `OutMultiEdgeDataView` for MultiDiGraphs.\n\n",
+  "code": "def data(self, data=True, default=None, nbunch=None):\n    if nbunch is None and data is False:\n        return self\n    return self.dataview(self, nbunch, data, default=default)"
+ },
+ {
+  "docstring": "Test that nodes are added to predecessors and successors.\n\nFor more information, see GitHub issue #2370.",
+  "code": "def test_pred_succ(self):\n    G = nx.DiGraph()\n    G.add_edge(0, 1)\n    H = G.edge_subgraph([(0, 1)])\n    assert list(H.predecessors(0)) == []\n    assert list(H.successors(0)) == [1]\n    assert list(H.predecessors(1)) == [0]\n    assert list(H.successors(1)) == []"
+ },
+ {
+  "docstring": "When `values` is a dict or dict-of-dict keyed by nodes, ensure that keys\nthat correspond to nodes not in G are ignored.",
+  "code": "@pytest.mark.parametrize(('values', 'name'), (({0: 'red', 1: 'blue'}, 'color'), ({0: {'color': 'red'}, 1: {'color': 'blue'}}, None)))\ndef test_set_node_attributes_ignores_extra_nodes(values, name):\n    G = nx.Graph()\n    G.add_node(0)\n    nx.set_node_attributes(G, values, name)\n    assert G.nodes[0]['color'] == 'red'\n    assert 1 not in G.nodes"
+ },
+ {
+  "docstring": "If `values` is a dict or dict-of-dicts containing edges that are not in\nG, data associate with these edges should be ignored.",
+  "code": "@pytest.mark.parametrize(('values', 'name'), (({(0, 1): 1.0, (0, 2): 2.0}, 'weight'), ({(0, 1): {'weight': 1.0}, (0, 2): {'weight': 2.0}}, None)))\ndef test_set_edge_attributes_ignores_extra_edges(values, name):\n    G = nx.Graph([(0, 1)])\n    nx.set_edge_attributes(G, values, name)\n    assert G[0][1]['weight'] == 1.0\n    assert (0, 2) not in G.edges"
+ },
+ {
+  "docstring": "If `values` is a dict or dict-of-dicts containing edges that are not in\nG, data associate with these edges should be ignored.",
+  "code": "@pytest.mark.parametrize(('values', 'name'), (({(0, 1, 0): 1.0, (0, 2, 0): 2.0}, 'weight'), ({(0, 1, 0): {'weight': 1.0}, (0, 2, 0): {'weight': 2.0}}, None)))\ndef test_set_edge_attributes_multi_ignores_extra_edges(values, name):\n    G = nx.MultiGraph([(0, 1, 0), (0, 1, 1)])\n    nx.set_edge_attributes(G, values, name)\n    assert G[0][1][0]['weight'] == 1.0\n    assert G[0][1][1] == {}\n    assert (0, 2) not in G.edges()"
+ },
+ {
+  "docstring": "test removing selfloops behavior vis-a-vis altering a dict while iterating.\ncf. gh-4068",
+  "code": "@pytest.mark.parametrize('graph_type', [nx.MultiGraph, nx.MultiDiGraph])\ndef test_selfloops_removal_multi(graph_type):\n    G = nx.complete_graph(3, create_using=graph_type)\n    G.add_edge(0, 0)\n    G.add_edge(0, 0)\n    G.remove_edges_from(nx.selfloop_edges(G))\n    assert (0, 0) not in G.edges()\n    G.add_edge(0, 0)\n    G.add_edge(0, 0)\n    with pytest.raises(RuntimeError):\n        G.remove_edges_from(nx.selfloop_edges(G, keys=True))\n    G.add_edge(0, 0)\n    G.add_edge(0, 0)\n    with pytest.raises(TypeError):\n        G.remove_edges_from(nx.selfloop_edges(G, data=True))\n    G.add_edge(0, 0)\n    G.add_edge(0, 0)\n    with pytest.raises(RuntimeError):\n        G.remove_edges_from(nx.selfloop_edges(G, data=True, keys=True))"
+ },
+ {
+  "docstring": "Case of no common neighbors.",
+  "code": "def test_custom1(self):\n    G = nx.Graph()\n    G.add_nodes_from([0, 1])\n    self.test(G, 0, 1, [])"
+ },
+ {
+  "docstring": "Case of equal nodes.",
+  "code": "def test_custom2(self):\n    G = nx.complete_graph(4)\n    self.test(G, 0, 0, [1, 2, 3])"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct nodes.",
+  "code": "def test_correct_nodes(self):\n    assert [0, 1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct edges.",
+  "code": "def test_correct_edges(self):\n    assert [(0, 1, 'edge01'), (3, 4, 'edge34')] == sorted(self.H.edges(data='name'))"
+ },
+ {
+  "docstring": "Tests that adding a node to the original graph does not\naffect the nodes of the subgraph.",
+  "code": "def test_add_node(self):\n    self.G.add_node(5)\n    assert [0, 1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that removing a node in the original graph does\naffect the nodes of the subgraph.",
+  "code": "def test_remove_node(self):\n    self.G.remove_node(0)\n    assert [1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that the node attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_node_attr_dict(self):\n    for v in self.H:\n        assert self.G.nodes[v] == self.H.nodes[v]\n    self.G.nodes[0]['name'] = 'foo'\n    assert self.G.nodes[0] == self.H.nodes[0]\n    self.H.nodes[1]['name'] = 'bar'\n    assert self.G.nodes[1] == self.H.nodes[1]"
+ },
+ {
+  "docstring": "Tests that the edge attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_edge_attr_dict(self):\n    for u, v in self.H.edges():\n        assert self.G.edges[u, v] == self.H.edges[u, v]\n    self.G.edges[0, 1]['name'] = 'foo'\n    assert self.G.edges[0, 1]['name'] == self.H.edges[0, 1]['name']\n    self.H.edges[3, 4]['name'] = 'bar'\n    assert self.G.edges[3, 4]['name'] == self.H.edges[3, 4]['name']"
+ },
+ {
+  "docstring": "Tests that the graph attribute dictionary of the two graphs\nis the same object.",
+  "code": "def test_graph_attr_dict(self):\n    assert self.G.graph is self.H.graph"
+ },
+ {
+  "docstring": "Test subgraph chains that both restrict and show nodes/edges.\n\nA restricted_view subgraph should allow induced subgraphs using\nG.subgraph that automagically without a chain (meaning the result\nis a subgraph view of the original graph not a subgraph-of-subgraph.",
+  "code": "def test_restricted_induced_subgraph_chains(self):\n    hide_nodes = [3, 4, 5]\n    hide_edges = [(6, 7)]\n    RG = nx.restricted_view(self.G, hide_nodes, hide_edges)\n    nodes = [4, 5, 6, 7, 8]\n    SG = nx.induced_subgraph(RG, nodes)\n    SSG = RG.subgraph(nodes)\n    assert RG._graph is self.G\n    assert SSG._graph is self.G\n    assert SG._graph is RG\n    assert edges_equal(SG.edges, SSG.edges)\n    CG = self.G.copy()\n    CG.remove_nodes_from(hide_nodes)\n    CG.remove_edges_from(hide_edges)\n    assert edges_equal(CG.edges(nodes), SSG.edges)\n    CG.remove_nodes_from([0, 1, 2, 3])\n    assert edges_equal(CG.edges, SSG.edges)\n    SSSG = self.G.subgraph(nodes)\n    RSG = nx.restricted_view(SSSG, hide_nodes, hide_edges)\n    assert RSG._graph is not self.G\n    assert edges_equal(RSG.edges, CG.edges)"
+ },
+ {
+  "docstring": "add_edges_from expects 4-tuples of the format (u, v, key, data_dict).\n\nEnsure 4-tuples of form (u, v, data_dict, key) raise exception.",
+  "code": "def test_multigraph_add_edges_from_four_tuple_misordered(self):\n    G = nx.MultiGraph()\n    with pytest.raises(TypeError):\n        G.add_edges_from([(0, 1, {'color': 'red'}, 0)])"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct nodes.",
+  "code": "def test_correct_nodes(self):\n    assert [0, 1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct edges.",
+  "code": "def test_correct_edges(self):\n    assert [(0, 1, 0, 'edge010'), (3, 4, 1, 'edge341')] == sorted(self.H.edges(keys=True, data='name'))"
+ },
+ {
+  "docstring": "Tests that adding a node to the original graph does not\naffect the nodes of the subgraph.",
+  "code": "def test_add_node(self):\n    self.G.add_node(5)\n    assert [0, 1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that removing a node in the original graph does\naffect the nodes of the subgraph.",
+  "code": "def test_remove_node(self):\n    self.G.remove_node(0)\n    assert [1, 3, 4] == sorted(self.H.nodes())"
+ },
+ {
+  "docstring": "Tests that the node attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_node_attr_dict(self):\n    for v in self.H:\n        assert self.G.nodes[v] == self.H.nodes[v]\n    self.G.nodes[0]['name'] = 'foo'\n    assert self.G.nodes[0] == self.H.nodes[0]\n    self.H.nodes[1]['name'] = 'bar'\n    assert self.G.nodes[1] == self.H.nodes[1]"
+ },
+ {
+  "docstring": "Tests that the edge attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_edge_attr_dict(self):\n    for u, v, k in self.H.edges(keys=True):\n        assert self.G._adj[u][v][k] == self.H._adj[u][v][k]\n    self.G._adj[0][1][0]['name'] = 'foo'\n    assert self.G._adj[0][1][0]['name'] == self.H._adj[0][1][0]['name']\n    self.H._adj[3][4][1]['name'] = 'bar'\n    assert self.G._adj[3][4][1]['name'] == self.H._adj[3][4][1]['name']"
+ },
+ {
+  "docstring": "Tests that the graph attribute dictionary of the two graphs\nis the same object.",
+  "code": "def test_graph_attr_dict(self):\n    assert self.G.graph is self.H.graph"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct nodes.",
+  "code": "def test_correct_nodes(self):\n    assert [(0, 'node0'), (1, 'node1'), (3, 'node3'), (4, 'node4')] == sorted(self.H.nodes.data('name'))"
+ },
+ {
+  "docstring": "Tests that the subgraph has the correct edges.",
+  "code": "def test_correct_edges(self):\n    assert edges_equal([(0, 1, 'edge01'), (3, 4, 'edge34')], self.H.edges.data('name'))"
+ },
+ {
+  "docstring": "Tests that adding a node to the original graph does not\naffect the nodes of the subgraph.",
+  "code": "def test_add_node(self):\n    self.G.add_node(5)\n    assert [0, 1, 3, 4] == sorted(self.H.nodes)\n    self.G.remove_node(5)"
+ },
+ {
+  "docstring": "Tests that removing a node in the original graph\nremoves the nodes of the subgraph.",
+  "code": "def test_remove_node(self):\n    self.G.remove_node(0)\n    assert [1, 3, 4] == sorted(self.H.nodes)\n    self.G.add_node(0, name='node0')\n    self.G.add_edge(0, 1, name='edge01')"
+ },
+ {
+  "docstring": "Tests that the node attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_node_attr_dict(self):\n    for v in self.H:\n        assert self.G.nodes[v] == self.H.nodes[v]\n    self.G.nodes[0]['name'] = 'foo'\n    assert self.G.nodes[0] == self.H.nodes[0]\n    self.H.nodes[1]['name'] = 'bar'\n    assert self.G.nodes[1] == self.H.nodes[1]\n    self.G.nodes[0]['name'] = 'node0'\n    self.H.nodes[1]['name'] = 'node1'"
+ },
+ {
+  "docstring": "Tests that the edge attribute dictionary of the two graphs is\nthe same object.",
+  "code": "def test_edge_attr_dict(self):\n    for u, v in self.H.edges():\n        assert self.G.edges[u, v] == self.H.edges[u, v]\n    self.G.edges[0, 1]['name'] = 'foo'\n    assert self.G.edges[0, 1]['name'] == self.H.edges[0, 1]['name']\n    self.H.edges[3, 4]['name'] = 'bar'\n    assert self.G.edges[3, 4]['name'] == self.H.edges[3, 4]['name']\n    self.G.edges[0, 1]['name'] = 'edge01'\n    self.H.edges[3, 4]['name'] = 'edge34'"
+ },
+ {
+  "docstring": "Tests that the graph attribute dictionary of the two graphs\nis the same object.",
+  "code": "def test_graph_attr_dict(self):\n    assert self.G.graph is self.H.graph"
+ },
+ {
+  "docstring": "Tests that the subgraph cannot change the graph structure",
+  "code": "def test_readonly(self):\n    pytest.raises(nx.NetworkXError, self.H.add_node, 5)\n    pytest.raises(nx.NetworkXError, self.H.remove_node, 0)\n    pytest.raises(nx.NetworkXError, self.H.add_edge, 5, 6)\n    pytest.raises(nx.NetworkXError, self.H.remove_edge, 0, 1)"
+ }
+]

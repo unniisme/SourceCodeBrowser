@@ -3,7 +3,7 @@ from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import HtmlFormatter
 # from model.model import get_model
-from model.T5 import T5Model
+from model.T5 import *
 import logging
 import sys
 
@@ -12,9 +12,24 @@ logging.basicConfig(format=FORMAT, stream=sys.stdout, encoding='utf-8', level=lo
 
 app = Flask(__name__)
 
-# model = get_model("T5")
-model = T5Model()
-model.model.save_pretrained("pretrained")
+if len(sys.argv) == 1:
+    print("Possible arguments: \
+        \t T5 : loads the base codeT5 summarization model (default)\
+        \t T5_python: loads the codeT5 python summarization model\
+        \t T5+ : loads the codeT5+ python summarization model \
+        \t <model_path> : loads the model at the given directory")
+    sys.argv.append("T5")
+
+if sys.argv[1] == "T5":
+    model = T5Model()
+elif sys.argv[1] == "T5_python":
+    model = T5Model("python")
+elif sys.argv == "T5+":
+    model = T5_plus()
+else:
+    model = T5Model_Pretrained(sys.argv[1])
+
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
