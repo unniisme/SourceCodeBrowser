@@ -24,7 +24,7 @@ if sys.argv[1] == "T5":
     model = T5Model()
 elif sys.argv[1] == "T5_python":
     model = T5Model("python")
-elif sys.argv == "T5+":
+elif sys.argv[1] == "T5+":
     model = T5_plus()
 else:
     model = T5Model_Pretrained(sys.argv[1])
@@ -34,7 +34,7 @@ else:
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if 'code' in request.form:
-        result = model.predict(request.form['code'])
+        result = model.predict("Summarize python: " + request.form['code'])
         # result = highlight(result, PythonLexer(), HtmlFormatter())
         return render_template('index.html', result=result, submitted_code = request.form['code'])
 
