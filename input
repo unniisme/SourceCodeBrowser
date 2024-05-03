@@ -1,0 +1,57 @@
+def _kempe_chain_bipartite_edge_coloring(G):
+
+    # The dictionary represents connections between vertices using colors.
+    # Each vertex (key) has color-keyed edges pointing to other vertices.
+    
+    # Get a dictionary of node degrees
+    degrees = dict(G.degree())
+
+    # Find the maximum degree in the graph
+    delta = max(degrees.values())
+
+    colors = set(range(delta))
+    coloring = {}
+
+    # Initialize color dictionary for each vertex
+    # dictionary of dictionary
+    used_colors = {node: {} for node in G.nodes}
+
+    for u, v in G.edges:
+        # Get the colors of edges ending at u and v
+        u_colors = set(used_colors[u].keys())
+        v_colors = set(used_colors[v].keys())
+
+        # Take the union and subtract from the color pallete
+        available_colors = colors - (u_colors | v_colors)
+
+        if available_colors:
+            # Color the edge with the lowest available color
+            color = min(available_colors)
+            used_colors[u][color] = v
+            used_colors[v][color] = u
+            coloring[(u, v)] = color
+            coloring[(v, u)] = color
+        else:
+            u_color = next(iter(colors - set(used_colors[u])))
+            v_color = next(iter(colors - set(used_colors[v])))
+            u1 = u
+            v1 = v
+            color = v_color
+
+            # Find a Kempe chain and swap colors
+            while True:
+                used_colors[v1][color] = u1
+                coloring[(u1, v1)] = color
+                coloring[(v1, u1)] = color
+                if color not in used_colors[u1]:
+                    used_colors[u1][color] = v1
+                    color = v_color if color == u_color else u_color
+                    used_colors[u1].pop(color)
+                    break
+                u_new = used_colors[u1][color]
+                used_colors[u1][color] = v1
+                v1 = u1
+                u1 = u_new
+                color = v_color if color == u_color else u_color
+
+    return coloring
